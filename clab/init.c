@@ -15,11 +15,25 @@
 int** sheet;
 
 int main(int argc, char *argv[]) {
-    // Parse command line arguments for display size
-    if (argc == 3) {
-        displayr = atoi(argv[1]);
-        displayc = atoi(argv[2]);
+    // Check for correct number of arguments
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <number of rows> <number of columns>\n", argv[0]);
+        return 1;
     }
+
+    // Parse command line arguments for display size
+    int input_rows = atoi(argv[1]);
+    int input_cols = atoi(argv[2]);
+
+    // Validate the parsed integers
+    if (input_rows <= 0 || input_rows > MAXROW || input_cols <= 0 || input_cols > MAXCOL) {
+        fprintf(stderr, "Invalid dimensions. Please enter values from 1 to %d for rows and 1 to %d for columns.\n", MAXROW, MAXCOL);
+        return 1;
+    }
+
+    // Set the display size
+    displayr = input_rows;
+    displayc = input_cols;
 
     // Allocate memory for row pointers
     sheet = (int **)malloc(MAXROW * sizeof(int *));
