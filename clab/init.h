@@ -3,7 +3,7 @@
 
 #define MAXROW 999
 #define MAXCOL 18278
-#define MAXCOLWIDTH 3
+#define MAXCOLWIDTH 5
 
 #endif
 

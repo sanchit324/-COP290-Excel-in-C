@@ -10,8 +10,6 @@
 Parent ***Parent_lst;
 Child ***Child_lst;
 
-
-
 /** 
  * Function to create Parent_lst (initialize all elements to NULL)
  */
@@ -27,7 +25,7 @@ void make_parent_list() {
 
 /** 
  * Function to create Child_lst (initialize all elements to NULL)
- */
+*/
 void make_child_list() {
     Child_lst = (Child ***)malloc(MAXROW * sizeof(Child **));
     for (int i = 0; i < MAXROW; i++) {

@@ -14,7 +14,13 @@
 // Global sheet
 int** sheet;
 
-int main() {
+int main(int argc, char *argv[]) {
+    // Parse command line arguments for display size
+    if (argc == 3) {
+        displayr = atoi(argv[1]);
+        displayc = atoi(argv[2]);
+    }
+
     // Allocate memory for row pointers
     sheet = (int **)malloc(MAXROW * sizeof(int *));
     if (sheet == NULL) {

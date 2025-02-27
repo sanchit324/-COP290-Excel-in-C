@@ -17,8 +17,8 @@
 #ifndef __DISPLAY_VALS__
     #define __DISPLAY_VALS__
 
-    #define cellwidth 8
-    #define displayr 10
-    #define displayc 10
+    extern int cellwidth;  // Keep as constant if not required to change
+    extern int displayr;
+    extern int displayc;
 
 #endif

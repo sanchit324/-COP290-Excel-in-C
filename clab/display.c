@@ -4,6 +4,9 @@
 
 int curr_org_r = 1;
 int curr_org_c = 1;
+int cellwidth = 8;  // Default cell width
+int displayr = 10;  // Default rows in display
+int displayc = 10;  // Default columns in display
 
 
 void int_to_alpha(int x, char* alpha) {
@@ -64,22 +67,22 @@ void scroll(int dr, int dc){
     // display_sheet();
 }
 
-void w(){
-    curr_org_r -= 10;
+void w() {
+    curr_org_r -= displayr;  // Scroll up by the number of rows in the display
     // display_sheet();
 }
 
-void a(){
-    curr_org_c -= 10;
+void a() {
+    curr_org_c -= displayc;  // Scroll left by the number of columns in the display
     // display_sheet();
 }
 
-void s(){
-    curr_org_r += 10;
+void s() {
+    curr_org_r += displayr;  // Scroll down by the number of rows in the display
     // display_sheet();
 }
 
-void d(){
-    curr_org_c += 10;
+void d() {
+    curr_org_c += displayc;  // Scroll right by the number of columns in the display
     // display_sheet();
 }
