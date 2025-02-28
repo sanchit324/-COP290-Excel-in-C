@@ -9,6 +9,7 @@
 
 // Global flags for output control and viewport position
 bool output_enabled = true;
+bool was_disabled = false;  // Initialize to false
 int viewport_row = 1;
 int viewport_col = 1;
 
@@ -293,6 +294,7 @@ void input_parser(char *inp, ParsedCommand *result) {
 }
 
 void disable_output() {
+    was_disabled = true;
     output_enabled = false;
 }
 

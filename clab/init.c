@@ -73,9 +73,6 @@ int main(int argc, char *argv[]) {
     time_t start, end;  // Changed to time_t for wall clock time
 
     while (1) {
-        // Display the sheet
-        display_sheet();
-
         // Print prompt with current status
         printf("[%.1f] (%s) > ", execution_time, status);
 
@@ -97,6 +94,10 @@ int main(int argc, char *argv[]) {
             process_command(&result);
             end = time(NULL);
             execution_time = difftime(end, start);
+            // Display sheet after scroll commands if output is enabled
+            if (output_enabled) {
+                display_sheet();
+            }
             continue;
         }
 
@@ -129,6 +130,22 @@ int main(int argc, char *argv[]) {
 
         end = time(NULL);  // End timing
         execution_time = difftime(end, start);  // Get difference in seconds
+
+        // Special handling for enable_output command
+        if (result.type == CMD_CONTROL && strcmp(result.control_cmd, "enable_output") == 0) {
+            process_command(&result);
+            if (!was_disabled) {  // If output wasn't previously disabled
+                display_sheet();
+            }
+            was_disabled = false;  // Reset the flag
+            continue;
+        }
+
+        // Process other commands and display sheet if output is enabled
+        process_command(&result);
+        if (output_enabled) {
+            display_sheet();
+        }
     }
 
     // Free allocated memory

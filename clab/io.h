@@ -82,6 +82,7 @@ typedef struct {
 
 // Global flags for output control and viewport position
 extern bool output_enabled;
+extern bool was_disabled;  // Track if output was previously disabled
 extern int viewport_row;
 extern int viewport_col;
 
