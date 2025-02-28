@@ -91,6 +91,15 @@ int main(int argc, char *argv[]) {
         // Process the input with timing
         start = time(NULL);  // Start timing
         
+        // Reset status for valid scroll commands
+        if (result.type == CMD_SCROLL_DIR || result.type == CMD_SCROLL) {
+            strcpy(status, "ok");
+            process_command(&result);
+            end = time(NULL);
+            execution_time = difftime(end, start);
+            continue;
+        }
+
         // Check for unrecognized commands or invalid text input
         if (result.type == CMD_INVALID || 
             (result.type == CMD_SET_CELL && !is_numeric_value(&result))) {
