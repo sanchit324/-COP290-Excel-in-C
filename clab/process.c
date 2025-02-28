@@ -230,9 +230,7 @@ bool handle_dependencies(ParsedCommand *result) {
     if (result->type == CMD_SCROLL || 
         result->type == CMD_SCROLL_DIR || 
         result->type == CMD_CONTROL || 
-        result->type == CMD_SLEEP ||
         result->type == CMD_INVALID) {
-        
         process_command(result);
         return false;
     }
@@ -240,22 +238,43 @@ bool handle_dependencies(ParsedCommand *result) {
     int r1 = result->op1.row - 1;
     int c1 = result->op1.col - 1;
 
-    // Special handling for SLEEP function
-    if (result->func == FUNC_SLEEP) {
-        return true;  // SLEEP is handled in assign
+    // Store child formulas before modifying dependencies
+    Child *children = Child_lst[r1][c1];
+    ParsedCommand *child_formulas = NULL;
+    int child_count = 0;
+    
+    // Count and store child formulas
+    Child *curr = children;
+    while (curr != NULL) {
+        child_count++;
+        curr = curr->next;
+    }
+    
+    if (child_count > 0) {
+        child_formulas = (ParsedCommand *)malloc(child_count * sizeof(ParsedCommand));
+        int i = 0;
+        curr = children;
+        while (curr != NULL) {
+            child_formulas[i] = curr->formula;
+            i++;
+            curr = curr->next;
+        }
     }
 
-    // For cell references in arithmetic or function operations
-    if (result->type == CMD_ARITHMETIC || result->type == CMD_FUNCTION) {
-        // Add dependencies for operands
-        if (result->op2.row != 0 && result->op2.col != 0) {
-            assign_parent(result->op2.row-1, result->op2.col-1, r1, c1, *result);
-            assign_child(result->op2.row-1, result->op2.col-1, r1, c1, *result);
-        }
-        if (result->op3.row != 0 && result->op3.col != 0) {
-            assign_parent(result->op3.row-1, result->op3.col-1, r1, c1, *result);
-            assign_child(result->op3.row-1, result->op3.col-1, r1, c1, *result);
-        }
+    // Remove old dependencies
+    Parent *parent = Parent_lst[r1][c1];
+    while (parent != NULL) {
+        remove_child(parent->r, parent->c, r1, c1);
+        parent = parent->next;
+    }
+    while (Parent_lst[r1][c1] != NULL) {
+        remove_parent(Parent_lst[r1][c1]->r, Parent_lst[r1][c1]->c, r1, c1);
+    }
+
+    // For SLEEP function, add dependency if using cell reference
+    if (result->func == FUNC_SLEEP && result->op2.row != 0 && result->op2.col != 0) {
+        assign_parent(result->op2.row-1, result->op2.col-1, r1, c1, *result);
+        assign_child(result->op2.row-1, result->op2.col-1, r1, c1, *result);
     }
 
     // Process the current cell
@@ -267,13 +286,28 @@ bool handle_dependencies(ParsedCommand *result) {
         function(result);
     }
 
-    // Update dependent cells
-    Child *child = Child_lst[r1][c1];
-    while (child != NULL) {
-        ParsedCommand cmd = child->formula;
-        process_command(&cmd);
-        handle_dependencies(&cmd);
-        child = child->next;
+    // Update all dependent cells
+    if (child_count > 0) {
+        for (int i = 0; i < child_count; i++) {
+            ParsedCommand cmd = child_formulas[i];
+            int child_r = cmd.op1.row - 1;
+            int child_c = cmd.op1.col - 1;
+
+            // Re-establish dependencies
+            assign_parent(r1, c1, child_r, child_c, cmd);
+            assign_child(r1, c1, child_r, child_c, cmd);
+
+            // Process the child's formula
+            if (cmd.type == CMD_ARITHMETIC) {
+                arithmetic(&cmd);
+            } else if (cmd.type == CMD_FUNCTION) {
+                function(&cmd);
+            }
+
+            // Recursively update this child's dependents
+            handle_dependencies(&cmd);
+        }
+        free(child_formulas);
     }
 
     return true;
@@ -297,7 +331,25 @@ void function(ParsedCommand *result) {
     int c3 = result->op3.col - 1;
     
     if (result->func == FUNC_SLEEP) {
-        return;  // SLEEP is handled elsewhere
+        // Get sleep duration from cell reference or direct value
+        int sleep_duration;
+        if (result->op2.row != 0 && result->op2.col != 0) {
+            sleep_duration = sheet[r2][c2];
+        } else {
+            sleep_duration = result->op2.value;
+        }
+
+        // Validate sleep duration
+        if (sleep_duration < 0 || sleep_duration > 3600) {
+            printf("Error: Sleep duration must be between 0 and 3600 seconds.\n");
+            sheet[r1][c1] = 0;
+            return;
+        }
+
+        // Perform sleep and store the duration
+        sleep(sleep_duration);
+        sheet[r1][c1] = sleep_duration;
+        return;
     }
 
     // Initialize variables for range operations

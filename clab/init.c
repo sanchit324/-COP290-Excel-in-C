@@ -65,6 +65,9 @@ int main(int argc, char *argv[]) {
     make_parent_list();
     make_child_list();
 
+    // Display initial empty sheet
+    display_sheet();
+
     // Variables for input, execution time, and command processing
     char input[MAX_INPUT_LEN];
     double execution_time = 0.0;
