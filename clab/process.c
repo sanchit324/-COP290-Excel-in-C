@@ -85,27 +85,14 @@ void assign(ParsedCommand *result) {
     int c2 = result->op2.col - 1;
     int val = result->op2.value;
 
-    // Store child formulas before modifying dependencies
-    Child *children = Child_lst[r1][c1];
-    ParsedCommand *child_formulas = NULL;
-    int child_count = 0;
-    
-    // Count and store child formulas
-    Child *curr = children;
-    while (curr != NULL) {
-        child_count++;
-        curr = curr->next;
+    // Remove old dependencies
+    Parent *parent = Parent_lst[r1][c1];
+    while (parent != NULL) {
+        remove_child(parent->r, parent->c, r1, c1);
+        parent = parent->next;
     }
-    
-    if (child_count > 0) {
-        child_formulas = (ParsedCommand *)malloc(child_count * sizeof(ParsedCommand));
-        int i = 0;
-        curr = children;
-        while (curr != NULL) {
-            child_formulas[i] = curr->formula;
-            i++;
-            curr = curr->next;
-        }
+    while (Parent_lst[r1][c1] != NULL) {
+        remove_parent(Parent_lst[r1][c1]->r, Parent_lst[r1][c1]->c, r1, c1);
     }
 
     if (r2 == -1 && c2 == -1) {
@@ -118,26 +105,6 @@ void assign(ParsedCommand *result) {
         // Add dependency
         assign_parent(r2, c2, r1, c1, *result);
         assign_child(r2, c2, r1, c1, *result);
-    }
-
-    // Update all dependent cells
-    if (child_count > 0) {
-        for (int i = 0; i < child_count; i++) {
-            ParsedCommand cmd = child_formulas[i];
-            int child_r = cmd.op1.row - 1;
-            int child_c = cmd.op1.col - 1;
-
-            // Process the child's formula
-            if (cmd.type == CMD_ARITHMETIC) {
-                arithmetic(&cmd);
-            } else if (cmd.type == CMD_FUNCTION) {
-                function(&cmd);
-            }
-
-            // Recursively update this child's dependents
-            handle_dependencies(&cmd);
-        }
-        free(child_formulas);
     }
 }
 
@@ -156,6 +123,16 @@ void arithmetic(ParsedCommand *result) {
     int c3 = result->op3.col - 1;
     int val2 = result->op2.value;
     int val3 = result->op3.value;
+
+    // Add dependencies for cell references
+    if (r2 != -1 && c2 != -1) {
+        assign_parent(r2, c2, r1, c1, *result);
+        assign_child(r2, c2, r1, c1, *result);
+    }
+    if (r3 != -1 && c3 != -1) {
+        assign_parent(r3, c3, r1, c1, *result);
+        assign_child(r3, c3, r1, c1, *result);
+    }
 
     int operand1 = (r2 == -1 && c2 == -1) ? val2 : sheet[r2][c2];
     int operand2 = (r3 == -1 && c3 == -1) ? val3 : sheet[r3][c3];
@@ -261,22 +238,6 @@ bool handle_dependencies(ParsedCommand *result) {
         }
     }
 
-    // Remove old dependencies
-    Parent *parent = Parent_lst[r1][c1];
-    while (parent != NULL) {
-        remove_child(parent->r, parent->c, r1, c1);
-        parent = parent->next;
-    }
-    while (Parent_lst[r1][c1] != NULL) {
-        remove_parent(Parent_lst[r1][c1]->r, Parent_lst[r1][c1]->c, r1, c1);
-    }
-
-    // For SLEEP function, add dependency if using cell reference
-    if (result->func == FUNC_SLEEP && result->op2.row != 0 && result->op2.col != 0) {
-        assign_parent(result->op2.row-1, result->op2.col-1, r1, c1, *result);
-        assign_child(result->op2.row-1, result->op2.col-1, r1, c1, *result);
-    }
-
     // Process the current cell
     if (result->type == CMD_SET_CELL) {
         assign(result);
@@ -292,10 +253,6 @@ bool handle_dependencies(ParsedCommand *result) {
             ParsedCommand cmd = child_formulas[i];
             int child_r = cmd.op1.row - 1;
             int child_c = cmd.op1.col - 1;
-
-            // Re-establish dependencies
-            assign_parent(r1, c1, child_r, child_c, cmd);
-            assign_child(r1, c1, child_r, child_c, cmd);
 
             // Process the child's formula
             if (cmd.type == CMD_ARITHMETIC) {
