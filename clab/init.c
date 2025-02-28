@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/time.h>  // For high-precision timing
-#include <unistd.h>    // For sleep()
+#include <time.h>     // For time()
+#include <unistd.h>   // For sleep()
 #include "init.h"
 #include "display.h"
 #include "io.h"
@@ -68,9 +68,9 @@ int main(int argc, char *argv[]) {
     // Variables for input, execution time, and command processing
     char input[MAX_INPUT_LEN];
     double execution_time = 0.0;
-    char status[20] = "ok";  // This will store our status messages
+    char status[20] = "ok";
     ParsedCommand result;
-    struct timeval start, end;
+    time_t start, end;  // Changed to time_t for wall clock time
 
     while (1) {
         // Display the sheet
@@ -88,8 +88,8 @@ int main(int argc, char *argv[]) {
             break;
         }
 
-        // Process the input with high-precision timing
-        gettimeofday(&start, NULL);
+        // Process the input with timing
+        start = time(NULL);  // Start timing
         
         // Check for unrecognized commands or invalid text input
         if (result.type == CMD_INVALID || 
@@ -118,8 +118,8 @@ int main(int argc, char *argv[]) {
             strcpy(status, "ok");
         }
 
-        gettimeofday(&end, NULL);
-        execution_time = (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1e6;
+        end = time(NULL);  // End timing
+        execution_time = difftime(end, start);  // Get difference in seconds
     }
 
     // Free allocated memory
