@@ -199,11 +199,21 @@ void input_parser(char *inp, ParsedCommand *result) {
                         strncpy(result->expression, expr_part, sizeof(result->expression)-1);
                     } else {
                         // Handle other functions
-                        if(strcmp(func_name, "MIN") == 0) result->func = FUNC_MIN;
-                        else if(strcmp(func_name, "MAX") == 0) result->func = FUNC_MAX;
-                        else if(strcmp(func_name, "AVG") == 0) result->func = FUNC_AVG;
-                        else if(strcmp(func_name, "SUM") == 0) result->func = FUNC_SUM;
-                        else if(strcmp(func_name, "STDEV") == 0) result->func = FUNC_STDEV;
+                        if(strcmp(func_name, "MIN") == 0) {
+                            result->func = FUNC_MIN;
+                        }
+                        else if(strcmp(func_name, "MAX") == 0) {
+                            result->func = FUNC_MAX;
+                        }
+                        else if(strcmp(func_name, "SUM") == 0) {
+                            result->func = FUNC_SUM;
+                        }
+                        else if(strcmp(func_name, "AVG") == 0) {
+                            result->func = FUNC_AVG;
+                        }
+                        else if(strcmp(func_name, "STDEV") == 0) {
+                            result->func = FUNC_STDEV;
+                        }
                         
                         // Parse range argument
                         char *range_start = func_start + 1;

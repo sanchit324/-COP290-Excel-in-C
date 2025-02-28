@@ -31,8 +31,8 @@ typedef enum {
     FUNC_NONE,
     FUNC_MIN,
     FUNC_MAX,
-    FUNC_AVG,
     FUNC_SUM,
+    FUNC_AVG,
     FUNC_STDEV,
     FUNC_SLEEP
 } FunctionType;

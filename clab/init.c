@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>     // For time()
-#include <unistd.h>   // For sleep()
+#include <time.h>   
+#include <unistd.h>   
 #include "init.h"
 #include "display.h"
 #include "io.h"

@@ -4,12 +4,12 @@
 #ifndef __FUNC_PROC__
     #define __FUNC_PROC__
 
-    // Function types
+    // Function types 
     #define FUNC_NONE   0
     #define FUNC_MIN    1
     #define FUNC_MAX    2
-    #define FUNC_SUM    3
-    #define FUNC_AVG    4
+    #define FUNC_SUM    3   
+    #define FUNC_AVG    4    
     #define FUNC_STDEV  5
     #define FUNC_SLEEP  6
 

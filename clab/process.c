@@ -358,36 +358,12 @@ bool handle_dependencies(ParsedCommand *result) {
             }
             printf("Cycle detected! Range-based operation aborted.\n");
             return false;
-        } else {
-            // Perform the operation based on result->func
-            // switch (result->func) {
-            //     case FUNC_MIN:
-            //         sheet[r1][c1] = compute_min(r_start, c_start, r_end, c_end);
-            //         break;
-            //     case FUNC_MAX:
-            //         sheet[r1][c1] = compute_max(r_start, c_start, r_end, c_end);
-            //         break;
-            //     case FUNC_AVG:
-            //         sheet[r1][c1] = compute_avg(r_start, c_start, r_end, c_end);
-            //         break;
-            //     case FUNC_SUM:
-            //         sheet[r1][c1] = compute_sum(r_start, c_start, r_end, c_end);
-            //         break;
-            //     case FUNC_STDEV:
-            //         sheet[r1][c1] = compute_stdev(r_start, c_start, r_end, c_end);
-            //         break;
-            //     case FUNC_SLEEP:
-            //         sleep(result->sleep_duration);
-            //         break;
-            //     default:
-            //         printf("Unknown function type.\n");
-            //         return false;
-            //         break;
-            // }
         }
+        
+        // Remove the commented switch statement and call function directly
+        function(result);
     }
     
-    // If we've made it here, everything executed correctly
     return true;
 }
 
@@ -408,9 +384,8 @@ void function(ParsedCommand *result) {
     int r3 = result->op3.row - 1;
     int c3 = result->op3.col - 1;
     
-    // Skip SLEEP function as it's handled in handle_dependencies
     if (result->func == FUNC_SLEEP) {
-        return;
+        return;  // SLEEP is handled elsewhere
     }
 
     // Initialize variables for range operations
@@ -420,17 +395,15 @@ void function(ParsedCommand *result) {
     int max = INT_MIN;
     double sum_sq = 0;
 
-    // Calculate range statistics if not SLEEP function
-    if (result->func != FUNC_SLEEP) {
-        for (int i = r2; i <= r3; i++) {
-            for (int j = c2; j <= c3; j++) {
-                int value = sheet[i][j];
-                sum += value;
-                count++;
-                if (value < min) min = value;
-                if (value > max) max = value;
-                sum_sq += (value * value);
-            }
+    // Calculate range statistics
+    for (int i = r2; i <= r3; i++) {
+        for (int j = c2; j <= c3; j++) {
+            int value = sheet[i][j];
+            sum += value;
+            count++;
+            if (value < min) min = value;
+            if (value > max) max = value;
+            sum_sq += (value * value);
         }
     }
 
@@ -441,11 +414,11 @@ void function(ParsedCommand *result) {
         case FUNC_MAX:
             sheet[r1][c1] = max;
             break;
-        case FUNC_AVG:
-            sheet[r1][c1] = (count > 0) ? sum / count : 0;
-            break;
         case FUNC_SUM:
             sheet[r1][c1] = sum;
+            break;
+        case FUNC_AVG:
+            sheet[r1][c1] = (count > 0) ? sum / count : 0;
             break;
         case FUNC_STDEV:
             if (count > 1) {
@@ -459,7 +432,6 @@ void function(ParsedCommand *result) {
         case FUNC_NONE:
             break;
     }
-    // Handle dependencies
 }
 
 /**
