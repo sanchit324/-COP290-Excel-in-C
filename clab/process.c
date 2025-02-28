@@ -184,6 +184,13 @@ void arithmetic(ParsedCommand *result) {
         case '/':
             if (operand2 == 0) {
                 sheet[r1][c1] = ERROR_VALUE;
+                // Update all dependent cells recursively
+                Child *child = Child_lst[r1][c1];
+                while (child != NULL) {
+                    ParsedCommand cmd = child->formula;
+                    sheet[cmd.op1.row - 1][cmd.op1.col - 1] = ERROR_VALUE;
+                    child = child->next;
+                }
             } else {
                 sheet[r1][c1] = operand1 / operand2;
             }
@@ -359,28 +366,28 @@ bool handle_dependencies(ParsedCommand *result) {
             return false;
         }
         
-        // Remove the commented switch statement and call function directly
-        function(result);
-    }
-    
-    // After processing the current cell, update all dependent cells
-    Child *child = Child_lst[r1][c1];
-    while (child != NULL) {
-        ParsedCommand cmd = child->formula;
-        int child_r = cmd.op1.row - 1;
-        int child_c = cmd.op1.col - 1;
-
-        // Re-process the child's formula
-        if (cmd.type == CMD_ARITHMETIC) {
-            arithmetic(&cmd);
-        } else if (cmd.type == CMD_FUNCTION) {
-            function(&cmd);
+        // After processing the current cell, safely update all dependent cells
+        Child *child = Child_lst[r1][c1];
+        while (child != NULL) {
+            ParsedCommand cmd = child->formula;
+            
+            // If parent cell has ERROR_VALUE, propagate it
+            if (sheet[r1][c1] == ERROR_VALUE) {
+                sheet[cmd.op1.row - 1][cmd.op1.col - 1] = ERROR_VALUE;
+            } else {
+                // Otherwise process normally
+                if (cmd.type == CMD_ARITHMETIC) {
+                    arithmetic(&cmd);
+                } else if (cmd.type == CMD_FUNCTION) {
+                    function(&cmd);
+                }
+            }
+            
+            // Move to next child before recursing to avoid invalid pointer
+            Child *next = child->next;
+            handle_dependencies(&cmd);
+            child = next;
         }
-
-        // Recursively update this child's dependents
-        handle_dependencies(&cmd);
-        
-        child = child->next;
     }
     
     return true;

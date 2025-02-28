@@ -238,6 +238,16 @@ void input_parser(char *inp, ParsedCommand *result) {
                 char op1[MAX_CELL_LEN], op2[MAX_CELL_LEN];
                 if(sscanf(expr_part, "%[^+-*/]%c%s", op1, &result->operator, op2) == 3) {
                     result->type = CMD_ARITHMETIC;
+                    
+                    // Validate both operands
+                    bool op1_valid = validate_cell(op1) || is_number(op1);
+                    bool op2_valid = validate_cell(op2) || is_number(op2);
+                    
+                    if (!op1_valid || !op2_valid) {
+                        result->type = CMD_INVALID;
+                        return;
+                    }
+
                     if(validate_cell(op1)) {
                         cell_to_rc(op1, &result->op2.row, &result->op2.col);
                     } else {
@@ -288,4 +298,11 @@ void disable_output() {
 
 void enable_output() {
     output_enabled = true;
+}
+
+// Add this helper function
+bool is_number(const char* str) {
+    char* endptr;
+    strtol(str, &endptr, 10);
+    return *endptr == '\0';
 }

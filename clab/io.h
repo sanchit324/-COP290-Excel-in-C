@@ -76,4 +76,5 @@ extern int viewport_col;
     bool validate_range(const char *range);
     bool validate_function(const char *func);
     void cell_to_rc(const char *cell, int *row, int *col);
+    bool is_number(const char* str);
 #endif
