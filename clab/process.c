@@ -281,6 +281,7 @@ void function(ParsedCommand *result) {
     int c2 = result->op2.col - 1;
     int r3 = result->op3.row - 1;
     int c3 = result->op3.col - 1;
+    int sleep_duration;  // Move declaration outside switch
     if (!is_valid_range(r2, c2, r3, c3) && result->func != FUNC_SLEEP) {
         return;
     }
@@ -325,7 +326,34 @@ void function(ParsedCommand *result) {
             }
             break;
         case FUNC_SLEEP:
-            sleep(result->sleep_duration);
+            if (r2 >= 0 && c2 >= 0) {
+                // Sleep duration from cell
+                sleep_duration = sheet[r2][c2];
+                
+                // Create dependency
+                assign_parent(r2, c2, r1, c1, *result);
+                assign_child(r2, c2, r1, c1, *result);
+                
+                // Check for cycles
+                if (detect_cycle(r1, c1)) {
+                    remove_child(r2, c2, r1, c1);
+                    remove_parent(r2, c2, r1, c1);
+                    printf("Cycle detected! Sleep operation aborted.\n");
+                    return;
+                }
+            } else {
+                // Sleep duration from direct value
+                sleep_duration = result->op2.value;
+            }
+            
+            // Perform sleep and set value
+            if (sleep_duration >= 0 && sleep_duration <= 3600) {
+                sleep(sleep_duration);
+                sheet[r1][c1] = sleep_duration;
+            } else {
+                printf("Error: Sleep duration must be between 0 and 3600 seconds.\n");
+                sheet[r1][c1] = 0;
+            }
             break;
         case FUNC_NONE:
             break;
