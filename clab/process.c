@@ -1,3 +1,8 @@
+/**
+ * process.c
+ * Handles all command processing and cell operations in the spreadsheet
+ */
+
 #include <math.h>
 #include <unistd.h>
 #include <limits.h>
@@ -67,21 +72,58 @@
 //     }
 // }
 
+/**
+ * Assigns a value to a cell and handles dependencies
+ * - Supports direct value assignment and cell reference assignment
+ * - Updates dependent cells, especially those with SLEEP functions
+ * - Maintains parent-child relationships in dependency graph
+ */
 void assign(ParsedCommand *result) {
     int r1 = result->op1.row - 1;
     int c1 = result->op1.col - 1;
-
     int r2 = result->op2.row - 1;
     int c2 = result->op2.col - 1;
     int val = result->op2.value;
 
     if (r2 == -1 && c2 == -1) {
-        sheet[r1][c1] = val;
-    } else {
-            sheet[r1][c1] = sheet[r2][c2];
+        // Remove previous dependencies
+        Parent *parent = Parent_lst[r1][c1];
+        while (parent != NULL) {
+            remove_child(parent->r, parent->c, r1, c1);
+            parent = parent->next;
         }
+
+        while (Parent_lst[r1][c1] != NULL) {
+            remove_parent(Parent_lst[r1][c1]->r, Parent_lst[r1][c1]->c, r1, c1);
+        }
+
+        sheet[r1][c1] = val;
+
+        // Update dependent cells
+        Child *child = Child_lst[r1][c1];
+        while (child != NULL) {
+            ParsedCommand cmd = child->formula;
+            if (cmd.func == FUNC_SLEEP) {
+                // Re-execute sleep for dependent cells
+                int sleep_duration = sheet[r1][c1];
+                if (sleep_duration >= 0 && sleep_duration <= 3600) {
+                    sleep(sleep_duration);
+                    sheet[child->r][child->c] = sleep_duration;
+                }
+            }
+            child = child->next;
+        }
+    } else {
+        sheet[r1][c1] = sheet[r2][c2];
+    }
 }
 
+/**
+ * Performs arithmetic operations between cells or values
+ * - Supports +, -, *, / operations
+ * - Handles cell references and direct values
+ * - Sets ERROR_VALUE for division by zero
+ */
 void arithmetic(ParsedCommand *result) {
     int r1 = result->op1.row - 1;
     int c1 = result->op1.col - 1;
@@ -116,11 +158,25 @@ void arithmetic(ParsedCommand *result) {
     // Handle dependencies
 }
 
+/**
+ * Validates if a range of cells is within bounds and properly ordered
+ * @param r1,c1 Starting cell coordinates (0-based)
+ * @param r2,c2 Ending cell coordinates (0-based)
+ * @return true if range is valid, false otherwise
+ */
 bool is_valid_range(int r1, int c1, int r2, int c2) {
     return (r1 <= r2 && c1 <= c2) && 
            (r1 >= 0 && r1 < MAXROW && c1 >= 0 && c1 < MAXCOL) &&
            (r2 >= 0 && r2 < MAXROW && c2 >= 0 && c2 < MAXCOL);
 }
+
+/**
+ * Main dependency handler for all cell operations
+ * - Creates and maintains dependency relationships
+ * - Detects and prevents circular dependencies
+ * - Updates dependent cells when source cells change
+ * - Handles both direct assignments and range operations
+ */
 bool handle_dependencies(ParsedCommand *result) {
 
     if (result->type == CMD_SCROLL || 
@@ -166,30 +222,6 @@ bool handle_dependencies(ParsedCommand *result) {
             assign_parent(result->op3.row - 1, result->op3.col - 1, r1, c1, *result);
             assign_child(result->op3.row - 1, result->op3.col - 1, r1, c1, *result);
         }
-
-        // Handle arithmetic operations
-        // switch (result->operator) {
-        //     case '+':
-        //         sheet[r1][c1] = val1 + val2;
-        //         break;
-        //     case '-':
-        //         sheet[r1][c1] = val1 - val2;
-        //         break;
-        //     case '*':
-        //         sheet[r1][c1] = val1 * val2;
-        //         break;
-        //     case '/':
-        //         if (val2 != 0) {
-        //             sheet[r1][c1] = val1 / val2;
-        //         } else {
-        //             printf("Error: Division by zero.\n");
-        //             return false;
-        //         }
-        //         break;
-        //     default:
-        //         sheet[r1][c1] = val1; // Direct assignment if no operator
-        //         break;
-        // }
 
         // Cycle detection
         if (detect_cycle(r1, c1)) {
@@ -274,6 +306,15 @@ bool handle_dependencies(ParsedCommand *result) {
     return true;
 }
 
+/**
+ * Processes function commands (MIN, MAX, AVG, SUM, STDEV, SLEEP)
+ * - Handles range-based operations
+ * - Special handling for SLEEP function:
+ *   * Supports both cell reference and direct value for duration
+ *   * Creates dependencies for cell-based sleep durations
+ *   * Validates sleep duration (0-3600 seconds)
+ *   * Updates cell value after sleep
+ */
 void function(ParsedCommand *result) {
     int r1 = result->op1.row - 1;
     int c1 = result->op1.col - 1;
@@ -330,6 +371,17 @@ void function(ParsedCommand *result) {
                 // Sleep duration from cell
                 sleep_duration = sheet[r2][c2];
                 
+                // Remove previous dependencies
+                Parent *parent = Parent_lst[r1][c1];
+                while (parent != NULL) {
+                    remove_child(parent->r, parent->c, r1, c1);
+                    parent = parent->next;
+                }
+
+                while (Parent_lst[r1][c1] != NULL) {
+                    remove_parent(Parent_lst[r1][c1]->r, Parent_lst[r1][c1]->c, r1, c1);
+                }
+                
                 // Create dependency
                 assign_parent(r2, c2, r1, c1, *result);
                 assign_child(r2, c2, r1, c1, *result);
@@ -361,6 +413,15 @@ void function(ParsedCommand *result) {
     // Handle dependencies
 }
 
+/**
+ * Main command processor
+ * - Routes commands to appropriate handlers
+ * - Handles all command types:
+ *   * Cell operations (SET, ARITHMETIC, FUNCTION)
+ *   * Navigation (SCROLL, SCROLL_DIR)
+ *   * Control commands (enable/disable_output)
+ *   * Sleep commands
+ */
 void process_command(ParsedCommand *result) {
 
     
