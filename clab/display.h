@@ -11,6 +11,8 @@
     void s();
     void d();
     void set_org(int r, int c);
+    void disable_output();
+    void enable_output();
 
 #endif
 

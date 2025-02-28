@@ -281,3 +281,11 @@ void input_parser(char *inp, ParsedCommand *result) {
         return;
     }
 }
+
+void disable_output() {
+    output_enabled = false;
+}
+
+void enable_output() {
+    output_enabled = true;
+}

@@ -189,7 +189,6 @@ void arithmetic(ParsedCommand *result) {
             }
             break;
     }
-    // Handle dependencies
 }
 
 /**
@@ -364,6 +363,26 @@ bool handle_dependencies(ParsedCommand *result) {
         function(result);
     }
     
+    // After processing the current cell, update all dependent cells
+    Child *child = Child_lst[r1][c1];
+    while (child != NULL) {
+        ParsedCommand cmd = child->formula;
+        int child_r = cmd.op1.row - 1;
+        int child_c = cmd.op1.col - 1;
+
+        // Re-process the child's formula
+        if (cmd.type == CMD_ARITHMETIC) {
+            arithmetic(&cmd);
+        } else if (cmd.type == CMD_FUNCTION) {
+            function(&cmd);
+        }
+
+        // Recursively update this child's dependents
+        handle_dependencies(&cmd);
+        
+        child = child->next;
+    }
+    
     return true;
 }
 
@@ -399,6 +418,10 @@ void function(ParsedCommand *result) {
     for (int i = r2; i <= r3; i++) {
         for (int j = c2; j <= c3; j++) {
             int value = sheet[i][j];
+            if (value == ERROR_VALUE) {
+                sheet[r1][c1] = ERROR_VALUE;
+                return;
+            }
             sum += value;
             count++;
             if (value < min) min = value;
@@ -418,7 +441,7 @@ void function(ParsedCommand *result) {
             sheet[r1][c1] = sum;
             break;
         case FUNC_AVG:
-            sheet[r1][c1] = (count > 0) ? sum / count : 0;
+            sheet[r1][c1] = (count > 0) ? sum / count : ERROR_VALUE;
             break;
         case FUNC_STDEV:
             if (count > 1) {
@@ -426,7 +449,7 @@ void function(ParsedCommand *result) {
                 double variance = (sum_sq - count * mean * mean) / (count - 1);
                 sheet[r1][c1] = (int)sqrt(variance);
             } else {
-                sheet[r1][c1] = 0;
+                sheet[r1][c1] = ERROR_VALUE;
             }
             break;
         case FUNC_NONE:
@@ -467,9 +490,9 @@ void process_command(ParsedCommand *result) {
             break;
         case CMD_CONTROL:
             if (strcmp(result->control_cmd, "disable_output") == 0) {
-                output_enabled = false;
+                disable_output();
             } else if (strcmp(result->control_cmd, "enable_output") == 0) {
-                output_enabled = true;
+                enable_output();
             }
             break;
         case CMD_SLEEP:
