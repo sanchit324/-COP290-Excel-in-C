@@ -85,70 +85,59 @@ void assign(ParsedCommand *result) {
     int c2 = result->op2.col - 1;
     int val = result->op2.value;
 
-    if (r2 == -1 && c2 == -1) {
-        // Remove previous dependencies but store child formulas
-        Child *children = Child_lst[r1][c1];
-        ParsedCommand *child_formulas = NULL;
-        int child_count = 0;
-        
-        // Count and store child formulas
-        Child *curr = children;
+    // Store child formulas before modifying dependencies
+    Child *children = Child_lst[r1][c1];
+    ParsedCommand *child_formulas = NULL;
+    int child_count = 0;
+    
+    // Count and store child formulas
+    Child *curr = children;
+    while (curr != NULL) {
+        child_count++;
+        curr = curr->next;
+    }
+    
+    if (child_count > 0) {
+        child_formulas = (ParsedCommand *)malloc(child_count * sizeof(ParsedCommand));
+        int i = 0;
+        curr = children;
         while (curr != NULL) {
-            child_count++;
+            child_formulas[i] = curr->formula;
+            i++;
             curr = curr->next;
         }
-        
-        if (child_count > 0) {
-            child_formulas = (ParsedCommand *)malloc(child_count * sizeof(ParsedCommand));
-            int i = 0;
-            curr = children;
-            while (curr != NULL) {
-                child_formulas[i] = curr->formula;
-                i++;
-                curr = curr->next;
-            }
-        }
+    }
 
-        // Remove old dependencies
-        Parent *parent = Parent_lst[r1][c1];
-        while (parent != NULL) {
-            remove_child(parent->r, parent->c, r1, c1);
-            parent = parent->next;
-        }
-
-        while (Parent_lst[r1][c1] != NULL) {
-            remove_parent(Parent_lst[r1][c1]->r, Parent_lst[r1][c1]->c, r1, c1);
-        }
-
+    if (r2 == -1 && c2 == -1) {
+        // Direct value assignment
         sheet[r1][c1] = val;
-
-        // Restore and update children
-        if (child_count > 0) {
-            for (int i = 0; i < child_count; i++) {
-                ParsedCommand cmd = child_formulas[i];
-                int child_r = cmd.op1.row - 1;
-                int child_c = cmd.op1.col - 1;
-                
-                // Re-establish dependencies
-                if (cmd.func == FUNC_SLEEP) {
-                    int sleep_duration = sheet[r1][c1];
-                    if (sleep_duration >= 0 && sleep_duration <= 3600) {
-                        sleep(sleep_duration);
-                        sheet[child_r][child_c] = sleep_duration;
-                    }
-                } else {
-                    // Re-process the child's formula
-                    function(&cmd);
-                }
-                
-                // Restore the dependency
-                assign_parent(r1, c1, child_r, child_c, cmd);
-                assign_child(r1, c1, child_r, child_c, cmd);
-            }
-            free(child_formulas);
-        }
     } else {
+        // Cell reference assignment
         sheet[r1][c1] = sheet[r2][c2];
+        
+        // Add dependency
+        assign_parent(r2, c2, r1, c1, *result);
+        assign_child(r2, c2, r1, c1, *result);
+    }
+
+    // Update all dependent cells
+    if (child_count > 0) {
+        for (int i = 0; i < child_count; i++) {
+            ParsedCommand cmd = child_formulas[i];
+            int child_r = cmd.op1.row - 1;
+            int child_c = cmd.op1.col - 1;
+
+            // Process the child's formula
+            if (cmd.type == CMD_ARITHMETIC) {
+                arithmetic(&cmd);
+            } else if (cmd.type == CMD_FUNCTION) {
+                function(&cmd);
+            }
+
+            // Recursively update this child's dependents
+            handle_dependencies(&cmd);
+        }
+        free(child_formulas);
     }
 }
 
@@ -156,7 +145,7 @@ void assign(ParsedCommand *result) {
  * Performs arithmetic operations between cells or values
  * - Supports +, -, *, / operations
  * - Handles cell references and direct values
- * - Sets ERROR_VALUE for division by zero
+ * - Sets ERROR_VALUE for division by zero and propagates to dependents
  */
 void arithmetic(ParsedCommand *result) {
     int r1 = result->op1.row - 1;
@@ -171,6 +160,12 @@ void arithmetic(ParsedCommand *result) {
     int operand1 = (r2 == -1 && c2 == -1) ? val2 : sheet[r2][c2];
     int operand2 = (r3 == -1 && c3 == -1) ? val3 : sheet[r3][c3];
 
+    // Check if any operand is ERROR_VALUE
+    if (operand1 == ERROR_VALUE || operand2 == ERROR_VALUE) {
+        sheet[r1][c1] = ERROR_VALUE;
+        return;
+    }
+
     switch (result->operator) {
         case '+':
             sheet[r1][c1] = operand1 + operand2;
@@ -184,13 +179,6 @@ void arithmetic(ParsedCommand *result) {
         case '/':
             if (operand2 == 0) {
                 sheet[r1][c1] = ERROR_VALUE;
-                // Update all dependent cells recursively
-                Child *child = Child_lst[r1][c1];
-                while (child != NULL) {
-                    ParsedCommand cmd = child->formula;
-                    sheet[cmd.op1.row - 1][cmd.op1.col - 1] = ERROR_VALUE;
-                    child = child->next;
-                }
             } else {
                 sheet[r1][c1] = operand1 / operand2;
             }
@@ -254,142 +242,40 @@ bool handle_dependencies(ParsedCommand *result) {
 
     // Special handling for SLEEP function
     if (result->func == FUNC_SLEEP) {
-        // Remove previous dependencies
-        Parent *parent = Parent_lst[r1][c1];
-        while (parent != NULL) {
-            remove_child(parent->r, parent->c, r1, c1);
-            parent = parent->next;
-        }
-        while (Parent_lst[r1][c1] != NULL) {
-            remove_parent(Parent_lst[r1][c1]->r, Parent_lst[r1][c1]->c, r1, c1);
-        }
-
-        // Process the sleep command directly here
-        int sleep_duration;
-        if (result->op2.row != 0 || result->op2.col != 0) {
-            sleep_duration = sheet[result->op2.row - 1][result->op2.col - 1];
-        } else {
-            sleep_duration = result->op2.value;
-        }
-        
-        if (sleep_duration >= 0 && sleep_duration <= 3600) {
-            sleep(sleep_duration);
-            sheet[r1][c1] = sleep_duration;
-        } else {
-            printf("Error: Sleep duration must be between 0 and 3600 seconds.\n");
-            sheet[r1][c1] = 0;
-        }
-        
-        return true;
+        return true;  // SLEEP is handled in assign
     }
 
-    // Queries without range (Direct assignments and arithmetic expressions)
-    if (result->func == FUNC_NONE && (result->type == CMD_SET_CELL || result->type == CMD_ARITHMETIC)) {
-        // Remove r1, c1 from child lists of its parents
-        Parent *parent = Parent_lst[r1][c1];
-        while (parent != NULL) {
-            remove_child(parent->r, parent->c, r1, c1);
-            parent = parent->next;
+    // For cell references in arithmetic or function operations
+    if (result->type == CMD_ARITHMETIC || result->type == CMD_FUNCTION) {
+        // Add dependencies for operands
+        if (result->op2.row != 0 && result->op2.col != 0) {
+            assign_parent(result->op2.row-1, result->op2.col-1, r1, c1, *result);
+            assign_child(result->op2.row-1, result->op2.col-1, r1, c1, *result);
         }
-
-        // Remove all parents of r1, c1 using remove_parent
-        while (Parent_lst[r1][c1] != NULL) {
-            remove_parent(Parent_lst[r1][c1]->r, Parent_lst[r1][c1]->c, r1, c1);
-        }
-
-        // Check if op2 and op3 are values or cells
-        bool op2_is_cell = (result->op2.row != 0 || result->op2.col != 0);
-        bool op3_is_cell = (result->op3.row != 0 || result->op3.col != 0);
-
-        int val1 = op2_is_cell ? sheet[result->op2.row - 1][result->op2.col - 1] : result->op2.value;
-        int val2 = op3_is_cell ? sheet[result->op3.row - 1][result->op3.col - 1] : result->op3.value;
-
-        // Assign dependencies if op2/op3 are cells
-        if (op2_is_cell) {
-            assign_parent(result->op2.row - 1, result->op2.col - 1, r1, c1, *result);
-            assign_child(result->op2.row - 1, result->op2.col - 1, r1, c1, *result);
-        }
-        if (op3_is_cell) {
-            assign_parent(result->op3.row - 1, result->op3.col - 1, r1, c1, *result);
-            assign_child(result->op3.row - 1, result->op3.col - 1, r1, c1, *result);
-        }
-
-        // Cycle detection
-        if (detect_cycle(r1, c1)) {
-            if (op2_is_cell) {
-                remove_child(result->op2.row - 1, result->op2.col - 1, r1, c1);
-                remove_parent(result->op2.row - 1, result->op2.col - 1, r1, c1);
-            }
-            if (op3_is_cell) {
-                remove_child(result->op3.row - 1, result->op3.col - 1, r1, c1);
-                remove_parent(result->op3.row - 1, result->op3.col - 1, r1, c1);
-            }
-            printf("Cycle detected! Assignment aborted.\n");
-            return false;
+        if (result->op3.row != 0 && result->op3.col != 0) {
+            assign_parent(result->op3.row-1, result->op3.col-1, r1, c1, *result);
+            assign_child(result->op3.row-1, result->op3.col-1, r1, c1, *result);
         }
     }
 
-    // Queries with range (Aggregates and operations on ranges)
-    else {
-        int r_start = result->op2.row - 1;
-        int c_start = result->op2.col - 1;
-        int r_end = result->op3.row - 1;
-        int c_end = result->op3.col - 1;
-
-        // Remove previous dependencies
-        Parent *parent = Parent_lst[r1][c1];
-        while (parent != NULL) {    
-            remove_child(parent->r, parent->c, r1, c1);
-            parent = parent->next;
-        }
-
-        while (Parent_lst[r1][c1] != NULL) {
-            remove_parent(Parent_lst[r1][c1]->r, Parent_lst[r1][c1]->c, r1, c1);
-        }
-
-        // Assign new dependencies
-        for (int i = r_start; i <= r_end; i++) {
-            for (int j = c_start; j <= c_end; j++) {
-                assign_parent(i, j, r1, c1, *result);
-                assign_child(i, j, r1, c1, *result);
-            }
-        }
-
-        if (detect_cycle(r1, c1)) {
-            for (int i = r_start; i <= r_end; i++) {
-                for (int j = c_start; j <= c_end; j++) {
-                    remove_child(i, j, r1, c1);
-                    remove_parent(i, j, r1, c1);
-                }
-            }
-            printf("Cycle detected! Range-based operation aborted.\n");
-            return false;
-        }
-        
-        // After processing the current cell, safely update all dependent cells
-        Child *child = Child_lst[r1][c1];
-        while (child != NULL) {
-            ParsedCommand cmd = child->formula;
-            
-            // If parent cell has ERROR_VALUE, propagate it
-            if (sheet[r1][c1] == ERROR_VALUE) {
-                sheet[cmd.op1.row - 1][cmd.op1.col - 1] = ERROR_VALUE;
-            } else {
-                // Otherwise process normally
-                if (cmd.type == CMD_ARITHMETIC) {
-                    arithmetic(&cmd);
-                } else if (cmd.type == CMD_FUNCTION) {
-                    function(&cmd);
-                }
-            }
-            
-            // Move to next child before recursing to avoid invalid pointer
-            Child *next = child->next;
-            handle_dependencies(&cmd);
-            child = next;
-        }
+    // Process the current cell
+    if (result->type == CMD_SET_CELL) {
+        assign(result);
+    } else if (result->type == CMD_ARITHMETIC) {
+        arithmetic(result);
+    } else if (result->type == CMD_FUNCTION) {
+        function(result);
     }
-    
+
+    // Update dependent cells
+    Child *child = Child_lst[r1][c1];
+    while (child != NULL) {
+        ParsedCommand cmd = child->formula;
+        process_command(&cmd);
+        handle_dependencies(&cmd);
+        child = child->next;
+    }
+
     return true;
 }
 
