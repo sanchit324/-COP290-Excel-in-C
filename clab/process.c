@@ -232,6 +232,7 @@ bool is_valid_range(ParsedCommand* cmd) {
  * - Handles both direct assignments and range operations
  */
 bool handle_dependencies(ParsedCommand *result) {
+    // Handle special commands first
     if (result->type == CMD_SCROLL || 
         result->type == CMD_SCROLL_DIR || 
         result->type == CMD_CONTROL || 
@@ -257,20 +258,22 @@ bool handle_dependencies(ParsedCommand *result) {
             remove_parent(Parent_lst[r1][c1]->r, Parent_lst[r1][c1]->c, r1, c1);
         }
 
-        // If sleep uses a cell reference, create dependency
+        // Process the sleep command directly here
+        int sleep_duration;
         if (result->op2.row != 0 || result->op2.col != 0) {
-            assign_parent(result->op2.row - 1, result->op2.col - 1, r1, c1, *result);
-            assign_child(result->op2.row - 1, result->op2.col - 1, r1, c1, *result);
-            
-            if (detect_cycle(r1, c1)) {
-                remove_child(result->op2.row - 1, result->op2.col - 1, r1, c1);
-                remove_parent(result->op2.row - 1, result->op2.col - 1, r1, c1);
-                printf("Cycle detected! Sleep operation aborted.\n");
-                return false;
-            }
+            sleep_duration = sheet[result->op2.row - 1][result->op2.col - 1];
+        } else {
+            sleep_duration = result->op2.value;
         }
         
-        function(result);
+        if (sleep_duration >= 0 && sleep_duration <= 3600) {
+            sleep(sleep_duration);
+            sheet[r1][c1] = sleep_duration;
+        } else {
+            printf("Error: Sleep duration must be between 0 and 3600 seconds.\n");
+            sheet[r1][c1] = 0;
+        }
+        
         return true;
     }
 
@@ -405,25 +408,8 @@ void function(ParsedCommand *result) {
     int r3 = result->op3.row - 1;
     int c3 = result->op3.col - 1;
     
-    // Handle SLEEP function separately
+    // Skip SLEEP function as it's handled in handle_dependencies
     if (result->func == FUNC_SLEEP) {
-        int sleep_duration;
-        
-        // Get sleep duration from cell or constant
-        if (result->op2.row != 0 || result->op2.col != 0) {
-            sleep_duration = sheet[r2][c2];
-        } else {
-            sleep_duration = result->op2.value;
-        }
-        
-        // Validate and execute sleep
-        if (sleep_duration >= 0 && sleep_duration <= 3600) {
-            sleep(sleep_duration);
-            sheet[r1][c1] = sleep_duration;
-        } else {
-            printf("Error: Sleep duration must be between 0 and 3600 seconds.\n");
-            sheet[r1][c1] = 0;
-        }
         return;
     }
 
@@ -486,9 +472,6 @@ void function(ParsedCommand *result) {
  *   * Sleep commands
  */
 void process_command(ParsedCommand *result) {
-
-    
-
     switch (result->type) {
         case CMD_SET_CELL:
             assign(result);
@@ -497,11 +480,17 @@ void process_command(ParsedCommand *result) {
             set_org(result->op1.row, result->op1.col);
             break;
         case CMD_SCROLL_DIR:
-            switch (result->scroll_direction) {
-                case 'w': w(); break;
-                case 'a': a(); break;
-                case 's': s(); break;
-                case 'd': d(); break;
+            // Validate scroll direction before processing
+            if (result->scroll_direction == 'w' || 
+                result->scroll_direction == 'a' || 
+                result->scroll_direction == 's' || 
+                result->scroll_direction == 'd') {
+                switch (result->scroll_direction) {
+                    case 'w': w(); break;
+                    case 'a': a(); break;
+                    case 's': s(); break;
+                    case 'd': d(); break;
+                }
             }
             break;
         case CMD_CONTROL:
@@ -524,4 +513,24 @@ void process_command(ParsedCommand *result) {
             // Handle invalid command
             break;
     }
+}
+
+/**
+ * Checks if the value being assigned is a valid numeric value
+ */
+bool is_numeric_value(ParsedCommand* cmd) {
+    // For direct cell assignments
+    if (cmd->type == CMD_SET_CELL) {
+        // If it's a cell reference, it's valid
+        if (cmd->op2.row != 0 || cmd->op2.col != 0) {
+            return true;
+        }
+        
+        // If it's a direct value, check if the expression is numeric
+        char* endptr;
+        strtol(cmd->expression, &endptr, 10);
+        // If endptr points to the end of string, the entire string was numeric
+        return (*endptr == '\0');
+    }
+    return true;  // Other command types are considered valid
 }

@@ -8,6 +8,7 @@ int cellwidth = 8;  // Default cell width
 int displayr = 10;  // Default rows in display
 int displayc = 10;  // Default columns in display
 
+#define DEFAULT_SCROLL 10  // Default scroll amount in any direction
 
 void int_to_alpha(int x, char* alpha) {
     if (x > MAXCOL) return;
@@ -55,34 +56,47 @@ void display_sheet() {
 
 /* Still need to add safety features to these i.e. give error when (curr_org_x,curr_org_c) is inappropriate */
 
-void set_org(int r, int c){
-    curr_org_r = r;
-    curr_org_c = c;
-    // display_sheet();
+void set_org(int r, int c) {
+    // Ensure the new origin stays within bounds
+    curr_org_r = (r < 1) ? 1 : 
+                 (r > MAXROW - displayr + 1) ? MAXROW - displayr + 1 : r;
+    
+    curr_org_c = (c < 1) ? 1 : 
+                 (c > MAXCOL - displayc + 1) ? MAXCOL - displayc + 1 : c;
 }
 
-void scroll(int dr, int dc){
-    curr_org_r += dr;
-    curr_org_c += dc;
-    // display_sheet();
+void scroll(int dr, int dc) {
+    int new_row = curr_org_r + dr;
+    int new_col = curr_org_c + dc;
+    
+    // Ensure we stay within bounds
+    curr_org_r = (new_row < 1) ? 1 : 
+                 (new_row > MAXROW - displayr + 1) ? MAXROW - displayr + 1 : new_row;
+    
+    curr_org_c = (new_col < 1) ? 1 : 
+                 (new_col > MAXCOL - displayc + 1) ? MAXCOL - displayc + 1 : new_col;
 }
 
 void w() {
-    curr_org_r -= displayr;  // Scroll up by the number of rows in the display
-    // display_sheet();
+    // Try to scroll up by DEFAULT_SCROLL, but don't go below 1
+    int new_row = curr_org_r - DEFAULT_SCROLL;
+    curr_org_r = (new_row < 1) ? 1 : new_row;
 }
 
 void a() {
-    curr_org_c -= displayc;  // Scroll left by the number of columns in the display
-    // display_sheet();
+    // Try to scroll left by DEFAULT_SCROLL, but don't go below 1
+    int new_col = curr_org_c - DEFAULT_SCROLL;
+    curr_org_c = (new_col < 1) ? 1 : new_col;
 }
 
 void s() {
-    curr_org_r += displayr;  // Scroll down by the number of rows in the display
-    // display_sheet();
+    // Try to scroll down by DEFAULT_SCROLL, but don't go beyond MAXROW
+    int new_row = curr_org_r + DEFAULT_SCROLL;
+    curr_org_r = (new_row > MAXROW - displayr + 1) ? MAXROW - displayr + 1 : new_row;
 }
 
 void d() {
-    curr_org_c += displayc;  // Scroll right by the number of columns in the display
-    // display_sheet();
+    // Try to scroll right by DEFAULT_SCROLL, but don't go beyond MAXCOL
+    int new_col = curr_org_c + DEFAULT_SCROLL;
+    curr_org_c = (new_col > MAXCOL - displayc + 1) ? MAXCOL - displayc + 1 : new_col;
 }

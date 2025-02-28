@@ -91,8 +91,9 @@ int main(int argc, char *argv[]) {
         // Process the input with high-precision timing
         gettimeofday(&start, NULL);
         
-        // Check for unrecognized commands
-        if (result.type == CMD_INVALID) {
+        // Check for unrecognized commands or invalid text input
+        if (result.type == CMD_INVALID || 
+            (result.type == CMD_SET_CELL && !is_numeric_value(&result))) {
             strcpy(status, "unrecognized cmd");
             execution_time = 0.0;
             continue;
@@ -107,9 +108,13 @@ int main(int argc, char *argv[]) {
             }
         }
 
+        // Process command
         bool dpcorrect = handle_dependencies(&result);
         if(dpcorrect) {
-            topo_sort(result.op1.row-1, result.op1.col-1, &result);
+            // Only show topology for non-sleep functions
+            if (result.func != FUNC_SLEEP) {
+                topo_sort(result.op1.row-1, result.op1.col-1, &result);
+            }
             strcpy(status, "ok");
         }
 

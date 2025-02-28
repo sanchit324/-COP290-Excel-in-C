@@ -19,4 +19,5 @@
     void process_command(ParsedCommand *result);
     bool handle_dependencies(ParsedCommand* result);
     bool is_valid_range(ParsedCommand* cmd);
+    bool is_numeric_value(ParsedCommand* cmd);
 #endif
