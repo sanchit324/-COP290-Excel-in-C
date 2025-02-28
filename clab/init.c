@@ -68,38 +68,20 @@ int main(int argc, char *argv[]) {
     // Variables for input, execution time, and command processing
     char input[MAX_INPUT_LEN];
     double execution_time = 0.0;
-    char status[20] = "ok";
+    char status[20] = "ok";  // This will store our status messages
     ParsedCommand result;
-    struct timeval start, end;  // High precision timing
+    struct timeval start, end;
 
     while (1) {
         // Display the sheet
         display_sheet();
 
-        // Print prompt
+        // Print prompt with current status
         printf("[%.1f] (%s) > ", execution_time, status);
 
         // Get user input
         input_reader(input);
         input_parser(input, &result);
-
-        // Print parsed command details
-        printf("Parsed Command:\n");
-        printf("Command Type: %d\n", result.type);
-        printf("Function Type: %d\n", result.func);
-        printf("Command: %s\n", result.command);
-        printf("Operand 1: row=%d, col=%d, value=%d\n", result.op1.row, result.op1.col, result.op1.value);
-        printf("Operand 2: row=%d, col=%d, value=%d\n", result.op2.row, result.op2.col, result.op2.value);
-        printf("Operand 3: row=%d, col=%d, value=%d\n", result.op3.row, result.op3.col, result.op3.value);
-        printf("Operator: %c\n", result.operator);
-        printf("Cell: %s\n", result.cell);
-        printf("Expression: %s\n", result.expression);
-        printf("Range: %s\n", result.range);
-        printf("Scroll Target: %s\n", result.scroll_target);
-        printf("Scroll Direction: %c\n", result.scroll_direction);
-        printf("Control Command: %s\n", result.control_cmd);
-        printf("Sleep Duration: %d\n", result.sleep_duration);
-        printf("Error Code: %d\n", result.error_code);
 
         // Check for quit command
         if (strcmp(input, "q") == 0) {
@@ -108,15 +90,31 @@ int main(int argc, char *argv[]) {
 
         // Process the input with high-precision timing
         gettimeofday(&start, NULL);
+        
+        // Check for unrecognized commands
+        if (result.type == CMD_INVALID) {
+            strcpy(status, "unrecognized cmd");
+            execution_time = 0.0;
+            continue;
+        }
+
+        // Check for invalid ranges in formulas
+        if (result.type == CMD_FUNCTION) {
+            if (!is_valid_range(&result)) {
+                strcpy(status, "Invalid range");
+                execution_time = 0.0;
+                continue;
+            }
+        }
+
         bool dpcorrect = handle_dependencies(&result);
-        if(dpcorrect) topo_sort(result.op1.row-1,result.op1.col-1,&result);
+        if(dpcorrect) {
+            topo_sort(result.op1.row-1, result.op1.col-1, &result);
+            strcpy(status, "ok");
+        }
+
         gettimeofday(&end, NULL);
-
-        // Calculate execution time in seconds with microsecond precision
         execution_time = (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1e6;
-
-        // Update status
-        strcpy(status, "ok");
     }
 
     // Free allocated memory

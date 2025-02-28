@@ -198,10 +198,30 @@ void arithmetic(ParsedCommand *result) {
  * @param r2,c2 Ending cell coordinates (0-based)
  * @return true if range is valid, false otherwise
  */
-bool is_valid_range(int r1, int c1, int r2, int c2) {
-    return (r1 <= r2 && c1 <= c2) && 
-           (r1 >= 0 && r1 < MAXROW && c1 >= 0 && c1 < MAXCOL) &&
-           (r2 >= 0 && r2 < MAXROW && c2 >= 0 && c2 < MAXCOL);
+bool is_valid_range(ParsedCommand* cmd) {
+    // For range operations
+    if (cmd->func == FUNC_MIN || cmd->func == FUNC_MAX || cmd->func == FUNC_SUM || 
+        cmd->func == FUNC_AVG || cmd->func == FUNC_STDEV) {
+        
+        int r1 = cmd->op2.row - 1;
+        int c1 = cmd->op2.col - 1;
+        int r2 = cmd->op3.row - 1;
+        int c2 = cmd->op3.col - 1;
+
+        // Check if range is forward-moving
+        if (r1 > r2 || c1 > c2) {
+            return false;
+        }
+
+        // Check if range is within bounds
+        if (r1 < 0 || r1 >= MAXROW || c1 < 0 || c1 >= MAXCOL ||
+            r2 < 0 || r2 >= MAXROW || c2 < 0 || c2 >= MAXCOL) {
+            return false;
+        }
+
+        return true;
+    }
+    return true;  // Non-range operations are always valid
 }
 
 /**
