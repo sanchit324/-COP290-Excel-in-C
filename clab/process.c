@@ -13,8 +13,13 @@
 #include "string.h"
 #include <stdio.h>
 #include "dependent.h"
+#include <time.h>
 
 #define ERROR_VALUE INT_MIN
+
+// Add this function prototype at the top of the file, after the includes
+// and before any function definitions
+void update_dependents(int row, int col);
 
 // void assign(ParsedCommand *result) {
 //     int r1 = result->op1.row - 1;
@@ -100,11 +105,21 @@ void assign(ParsedCommand *result) {
         sheet[r1][c1] = val;
     } else {
         // Cell reference assignment
-        sheet[r1][c1] = sheet[r2][c2];
-        
         // Add dependency
         assign_parent(r2, c2, r1, c1, *result);
         assign_child(r2, c2, r1, c1, *result);
+        
+        // Check for cycles
+        if (detect_cycle(r1, c1)) {
+            // Remove the dependencies if cycle is detected
+            remove_child(r2, c2, r1, c1);
+            remove_parent(r2, c2, r1, c1);
+            printf("Cycle detected! Assignment aborted.\n");
+            sheet[r1][c1] = ERROR_VALUE;
+            return;
+        }
+        
+        sheet[r1][c1] = sheet[r2][c2];
     }
 }
 
@@ -124,6 +139,16 @@ void arithmetic(ParsedCommand *result) {
     int val2 = result->op2.value;
     int val3 = result->op3.value;
 
+    // Remove old dependencies
+    Parent *parent = Parent_lst[r1][c1];
+    while (parent != NULL) {
+        remove_child(parent->r, parent->c, r1, c1);
+        parent = parent->next;
+    }
+    while (Parent_lst[r1][c1] != NULL) {
+        remove_parent(Parent_lst[r1][c1]->r, Parent_lst[r1][c1]->c, r1, c1);
+    }
+
     // Add dependencies for cell references
     if (r2 != -1 && c2 != -1) {
         assign_parent(r2, c2, r1, c1, *result);
@@ -132,6 +157,22 @@ void arithmetic(ParsedCommand *result) {
     if (r3 != -1 && c3 != -1) {
         assign_parent(r3, c3, r1, c1, *result);
         assign_child(r3, c3, r1, c1, *result);
+    }
+
+    // Check for cycles after adding dependencies
+    if (detect_cycle(r1, c1)) {
+        // Remove the dependencies if cycle is detected
+        if (r2 != -1 && c2 != -1) {
+            remove_child(r2, c2, r1, c1);
+            remove_parent(r2, c2, r1, c1);
+        }
+        if (r3 != -1 && c3 != -1) {
+            remove_child(r3, c3, r1, c1);
+            remove_parent(r3, c3, r1, c1);
+        }
+        printf("Cycle detected! Operation aborted.\n");
+        sheet[r1][c1] = ERROR_VALUE;
+        return;
     }
 
     int operand1 = (r2 == -1 && c2 == -1) ? val2 : sheet[r2][c2];
@@ -215,29 +256,6 @@ bool handle_dependencies(ParsedCommand *result) {
     int r1 = result->op1.row - 1;
     int c1 = result->op1.col - 1;
 
-    // Store child formulas before modifying dependencies
-    Child *children = Child_lst[r1][c1];
-    ParsedCommand *child_formulas = NULL;
-    int child_count = 0;
-    
-    // Count and store child formulas
-    Child *curr = children;
-    while (curr != NULL) {
-        child_count++;
-        curr = curr->next;
-    }
-    
-    if (child_count > 0) {
-        child_formulas = (ParsedCommand *)malloc(child_count * sizeof(ParsedCommand));
-        int i = 0;
-        curr = children;
-        while (curr != NULL) {
-            child_formulas[i] = curr->formula;
-            i++;
-            curr = curr->next;
-        }
-    }
-
     // Process the current cell
     if (result->type == CMD_SET_CELL) {
         assign(result);
@@ -247,26 +265,9 @@ bool handle_dependencies(ParsedCommand *result) {
         function(result);
     }
 
-    // Update all dependent cells
-    if (child_count > 0) {
-        for (int i = 0; i < child_count; i++) {
-            ParsedCommand cmd = child_formulas[i];
-            int child_r = cmd.op1.row - 1;
-            int child_c = cmd.op1.col - 1;
-
-            // Process the child's formula
-            if (cmd.type == CMD_ARITHMETIC) {
-                arithmetic(&cmd);
-            } else if (cmd.type == CMD_FUNCTION) {
-                function(&cmd);
-            }
-
-            // Recursively update this child's dependents
-            handle_dependencies(&cmd);
-        }
-        free(child_formulas);
-    }
-
+    // Update all dependent cells recursively
+    update_dependents(r1, c1);
+    
     return true;
 }
 
@@ -287,10 +288,34 @@ void function(ParsedCommand *result) {
     int r3 = result->op3.row - 1;
     int c3 = result->op3.col - 1;
     
+    // Remove old dependencies
+    Parent *parent = Parent_lst[r1][c1];
+    while (parent != NULL) {
+        remove_child(parent->r, parent->c, r1, c1);
+        parent = parent->next;
+    }
+    while (Parent_lst[r1][c1] != NULL) {
+        remove_parent(Parent_lst[r1][c1]->r, Parent_lst[r1][c1]->c, r1, c1);
+    }
+    
     if (result->func == FUNC_SLEEP) {
         // Get sleep duration from cell reference or direct value
         int sleep_duration;
+        
+        // Add dependency if using cell reference
         if (result->op2.row != 0 && result->op2.col != 0) {
+            assign_parent(r2, c2, r1, c1, *result);
+            assign_child(r2, c2, r1, c1, *result);
+            
+            // Check for cycles
+            if (detect_cycle(r1, c1)) {
+                remove_child(r2, c2, r1, c1);
+                remove_parent(r2, c2, r1, c1);
+                printf("Cycle detected! Operation aborted.\n");
+                sheet[r1][c1] = ERROR_VALUE;
+                return;
+            }
+            
             sleep_duration = sheet[r2][c2];
         } else {
             sleep_duration = result->op2.value;
@@ -304,9 +329,49 @@ void function(ParsedCommand *result) {
         }
 
         // Perform sleep and store the duration
-        sleep(sleep_duration);
+        // Use nanosleep for more precise timing
+        struct timespec ts;
+        ts.tv_sec = sleep_duration;
+        ts.tv_nsec = 0;
+        nanosleep(&ts, NULL);
+        
         sheet[r1][c1] = sleep_duration;
         return;
+    }
+
+    // For range operations, add dependencies for all cells in the range
+    if (result->func == FUNC_MIN || result->func == FUNC_MAX || 
+        result->func == FUNC_SUM || result->func == FUNC_AVG || 
+        result->func == FUNC_STDEV) {
+        
+        // Validate range
+        if (!is_valid_range(result)) {
+            printf("Error: Invalid range specified.\n");
+            sheet[r1][c1] = ERROR_VALUE;
+            return;
+        }
+        
+        // Add dependencies for all cells in the range
+        for (int i = r2; i <= r3; i++) {
+            for (int j = c2; j <= c3; j++) {
+                assign_parent(i, j, r1, c1, *result);
+                assign_child(i, j, r1, c1, *result);
+            }
+        }
+        
+        // Check for cycles
+        if (detect_cycle(r1, c1)) {
+            // Remove all dependencies if cycle is detected
+            for (int i = r2; i <= r3; i++) {
+                for (int j = c2; j <= c3; j++) {
+                    remove_child(i, j, r1, c1);
+                    remove_parent(i, j, r1, c1);
+                }
+            }
+            printf("Cycle detected! Operation aborted.\n");
+            sheet[r1][c1] = ERROR_VALUE;
+            return;
+        }
     }
 
     // Initialize variables for range operations
@@ -430,4 +495,50 @@ bool is_numeric_value(ParsedCommand* cmd) {
         return (*endptr == '\0');
     }
     return true;  // Other command types are considered valid
+}
+
+/**
+ * Recursively updates all cells that depend on the given cell
+ */
+void update_dependents(int row, int col) {
+    Child *child = Child_lst[row][col];
+    
+    while (child != NULL) {
+        int child_r = child->r;
+        int child_c = child->c;
+        ParsedCommand cmd = child->formula;
+        
+        // Process the child's formula, but skip SLEEP operations during dependency updates
+        if (cmd.type == CMD_ARITHMETIC) {
+            arithmetic(&cmd);
+        } else if (cmd.type == CMD_FUNCTION && cmd.func != FUNC_SLEEP) {
+            function(&cmd);
+        } else if (cmd.type == CMD_SET_CELL) {
+            assign(&cmd);
+        } else if (cmd.type == CMD_FUNCTION && cmd.func == FUNC_SLEEP) {
+            // For SLEEP functions, just update the value without sleeping again
+            int r1 = cmd.op1.row - 1;
+            int c1 = cmd.op1.col - 1;
+            int r2 = cmd.op2.row - 1;
+            int c2 = cmd.op2.col - 1;
+            
+            // Get sleep duration without sleeping
+            int sleep_duration;
+            if (cmd.op2.row != 0 && cmd.op2.col != 0) {
+                sleep_duration = sheet[r2][c2];
+            } else {
+                sleep_duration = cmd.op2.value;
+            }
+            
+            // Just update the cell value without sleeping
+            if (sleep_duration >= 0 && sleep_duration <= 3600) {
+                sheet[r1][c1] = sleep_duration;
+            }
+        }
+        
+        // Recursively update this child's dependents
+        update_dependents(child_r, child_c);
+        
+        child = child->next;
+    }
 }
