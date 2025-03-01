@@ -91,6 +91,27 @@ int main(int argc, char *argv[]) {
         // Process the input with timing
         start = time(NULL);  // Start timing
         
+        // Handle control commands (disable_output, enable_output)
+        if (result.type == CMD_CONTROL) {
+            strcpy(status, "ok");  // Set status to "ok" for control commands
+            
+            // Process the command
+            process_command(&result);
+            
+            end = time(NULL);
+            execution_time = difftime(end, start);
+            
+            // Special handling for enable_output command
+            if (strcmp(result.control_cmd, "enable_output") == 0) {
+                if (!was_disabled) {  // If output wasn't previously disabled
+                    display_sheet();
+                }
+                was_disabled = false;  // Reset the flag
+            }
+            
+            continue;
+        }
+        
         // Reset status for valid scroll commands
         if (result.type == CMD_SCROLL_DIR || result.type == CMD_SCROLL) {
             strcpy(status, "ok");
@@ -109,6 +130,10 @@ int main(int argc, char *argv[]) {
             (result.type == CMD_SET_CELL && !is_numeric_value(&result))) {
             strcpy(status, "unrecognized cmd");
             execution_time = 0.0;
+            // Display sheet even for unrecognized commands
+            if (output_enabled) {
+                display_sheet();
+            }
             continue;
         }
 
@@ -117,6 +142,10 @@ int main(int argc, char *argv[]) {
             if (!is_valid_range(&result)) {
                 strcpy(status, "Invalid range");
                 execution_time = 0.0;
+                // Display sheet even for invalid ranges
+                if (output_enabled) {
+                    display_sheet();
+                }
                 continue;
             }
         }
@@ -133,16 +162,6 @@ int main(int argc, char *argv[]) {
 
         end = time(NULL);  // End timing
         execution_time = difftime(end, start);  // Get difference in seconds
-
-        // Special handling for enable_output command
-        if (result.type == CMD_CONTROL && strcmp(result.control_cmd, "enable_output") == 0) {
-            process_command(&result);
-            if (!was_disabled) {  // If output wasn't previously disabled
-                display_sheet();
-            }
-            was_disabled = false;  // Reset the flag
-            continue;
-        }
 
         // Process other commands and display sheet if output is enabled
         process_command(&result);
