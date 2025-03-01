@@ -275,119 +275,37 @@ void print_adjlst(AdjNode *Lst) {
     }
 }
 
-void topo_sort_dfs(int r, int c,int **visited) {
+void topo_sort_dfs(int r, int c, int **visited, StackNode **parentMap) {
     if (visited[r][c]) return;
     visited[r][c] = true;
 
     Child *child = Child_lst[r][c];
     while (child != NULL) {
-        topo_sort_dfs(child->r, child->c,visited);
+        if (!visited[child->r][child->c]) {
+            parentMap[child->r][child->c] = (StackNode){r, c};  // Store parent
+            topo_sort_dfs(child->r, child->c, visited, parentMap);
+        }
         child = child->next;
     }
 
     push(r, c);
 }
 
-// void topo_sort(int root_r, int root_c) {
-//     int **visited;
-//     visited = (int **)malloc(MAXROW * sizeof(int *)); 
-    
-//     for (int i = 0; i < MAXROW; i++) {
-//         visited[i] = (int *)malloc(MAXCOL * sizeof(int)); 
-//     }
-
-//     for (int i = 0; i < MAXROW; i++) {
-//         for (int j = 0; j < MAXCOL; j++) {
-//             visited[i][j] = false;
-//         }
-//     }
-
-//     topo_sort_dfs(root_r, root_c,visited);
-
-//     printf("\nTopological Order: ");
-//     while (!isEmpty()) {
-//         StackNode node = pop();
-//         printf("(%d, %d) ", node.r, node.c);
-//     }
-//     printf("\n");
-//         // Freeing memory after usage
-//     for (int i = 0; i < MAXROW; i++) {
-//         free(visited[i]); // Free each row
-//     }
-//     free(visited); // Free the array of pointers
-// }
-
-
-// void topo_sort(int root_r, int root_c) {
-//     int **visited;
-//     visited = (int **)malloc(MAXROW * sizeof(int *)); 
-    
-//     for (int i = 0; i < MAXROW; i++) {
-//         visited[i] = (int *)malloc(MAXCOL * sizeof(int)); 
-//     }
-
-//     for (int i = 0; i < MAXROW; i++) {
-//         for (int j = 0; j < MAXCOL; j++) {
-//             visited[i][j] = false;
-//         }
-//     }
-
-//     topo_sort_dfs(root_r, root_c, visited);
-
-//     printf("\nTopological Order with Formulas:\n");
-
-//     StackNode prevNode = pop();  
-//     printf("(%d, %d) ", prevNode.r, prevNode.c);  // Print first node
-
-//     while (!isEmpty()) {
-//         StackNode currNode = pop();
-
-//         // Find the formula linking prevNode to currNode
-//         Child *child = Child_lst[prevNode.r][prevNode.c];
-//         ParsedCommand formula;
-//         int found = 0;
-//         while (child != NULL) {
-//             if (child->r == currNode.r && child->c == currNode.c) {
-//                 formula = child->formula;
-//                 process_command(&formula);
-//                 found = 1;
-//                 break;
-//             }
-//             child = child->next;
-//         }
-
-//         if (found) {
-//             printf("--[%s]--> (%d, %d) ", formula.expression, currNode.r, currNode.c);
-//         } else {
-//             printf("--[NO FORMULA]--> (%d, %d) ", currNode.r, currNode.c);
-//         }
-
-//         prevNode = currNode;  // Move to next node
-//     }
-//     printf("\n");
-
-//     // Free memory
-//     for (int i = 0; i < MAXROW; i++) {
-//         free(visited[i]);
-//     }
-//     free(visited);
-// }
-
 void topo_sort(int root_r, int root_c, ParsedCommand *result) {
-    int **visited;
-    visited = (int **)malloc(MAXROW * sizeof(int *)); 
-    
-    for (int i = 0; i < MAXROW; i++) {
-        visited[i] = (int *)malloc(MAXCOL * sizeof(int)); 
-    }
+    int **visited = (int **)malloc(MAXROW * sizeof(int *));
+    StackNode **parentMap = (StackNode **)malloc(MAXROW * sizeof(StackNode *));  // Parent tracker
 
     for (int i = 0; i < MAXROW; i++) {
+        visited[i] = (int *)malloc(MAXCOL * sizeof(int));
+        parentMap[i] = (StackNode *)malloc(MAXCOL * sizeof(StackNode));
+
         for (int j = 0; j < MAXCOL; j++) {
             visited[i][j] = false;
+            parentMap[i][j] = (StackNode){-1, -1};  // Default invalid parent
         }
     }
 
-    topo_sort_dfs(root_r, root_c, visited);
+    topo_sort_dfs(root_r, root_c, visited, parentMap);
 
     printf("\nTopological Order with Formulas:\n");
 
@@ -396,9 +314,9 @@ void topo_sort(int root_r, int root_c, ParsedCommand *result) {
         return;
     }
 
-    StackNode prevNode = pop();
-    printf("(%d, %d) ", prevNode.r, prevNode.c);  // Print first node
-    
+    StackNode currNode = pop();
+    printf("(%d, %d) ", currNode.r, currNode.c);
+
     // First formula is the user-provided one
     if (result) {
         printf("--[%s]--> ", result->expression);
@@ -408,36 +326,40 @@ void topo_sort(int root_r, int root_c, ParsedCommand *result) {
     }
 
     while (!isEmpty()) {
-        StackNode currNode = pop();
+        StackNode nextNode = pop();
 
-        // Find the formula linking prevNode to currNode
-        Child *child = Child_lst[prevNode.r][prevNode.c];
+        // Get the parent of nextNode
+        StackNode parent = parentMap[nextNode.r][nextNode.c];
+
+        // Find the formula linking parent to nextNode
         ParsedCommand formula;
         int found = 0;
-        
-        while (child != NULL) {
-            if (child->r == currNode.r && child->c == currNode.c) {
-                formula = child->formula;
-                process_command(&formula);
-                found = 1;
-                break;
+        if (parent.r != -1 && parent.c != -1) {
+            Child *child = Child_lst[parent.r][parent.c];
+            while (child != NULL) {
+                if (child->r == nextNode.r && child->c == nextNode.c) {
+                    formula = child->formula;
+                    process_command(&formula);
+                    found = 1;
+                    break;
+                }
+                child = child->next;
             }
-            child = child->next;
         }
 
         if (found) {
-            printf("(%d, %d) --[%s]--> ", currNode.r, currNode.c, formula.expression);
+            printf("(%d, %d) --[%s]--> ", nextNode.r, nextNode.c, formula.expression);
         } else {
-            printf("(%d, %d) --[NO FORMULA]--> ", currNode.r, currNode.c);
+            printf("(%d, %d) --[NO FORMULA]--> ", nextNode.r, nextNode.c);
         }
-
-        prevNode = currNode;  // Move to next node
     }
     printf("\n");
 
     // Free memory
     for (int i = 0; i < MAXROW; i++) {
         free(visited[i]);
+        free(parentMap[i]);
     }
     free(visited);
+    free(parentMap);
 }
