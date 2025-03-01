@@ -17,6 +17,9 @@
 
 #define ERROR_VALUE INT_MIN
 
+// Add external declaration for status variable
+extern char status[20];
+
 // Add this function prototype at the top of the file, after the includes
 // and before any function definitions
 void update_dependents(int row, int col);
@@ -119,6 +122,8 @@ void assign(ParsedCommand *result) {
             remove_parent(r2, c2, r1, c1);
             // Restore original value instead of setting ERROR_VALUE
             sheet[r1][c1] = original_value;
+            // Set status to "err" for cycle detection
+            strcpy(status, "err");
             return;
         }
         
@@ -178,6 +183,8 @@ void arithmetic(ParsedCommand *result) {
         }
         // Restore original value instead of setting ERROR_VALUE
         sheet[r1][c1] = original_value;
+        // Set status to "err" for cycle detection
+        strcpy(status, "err");
         return;
     }
 
@@ -322,6 +329,8 @@ void function(ParsedCommand *result) {
                 remove_parent(r2, c2, r1, c1);
                 // Restore original value instead of setting ERROR_VALUE
                 sheet[r1][c1] = original_value;
+                // Set status to "err" for cycle detection
+                strcpy(status, "err");
                 return;
             }
             
@@ -378,6 +387,8 @@ void function(ParsedCommand *result) {
             }
             // Restore original value instead of setting ERROR_VALUE
             sheet[r1][c1] = original_value;
+            // Set status to "err" for cycle detection
+            strcpy(status, "err");
             return;
         }
     }
@@ -422,7 +433,7 @@ void function(ParsedCommand *result) {
             if (count > 1) {
                 double mean = (double)sum / count;
                 double variance = (sum_sq - count * mean * mean) / (count - 1);
-                sheet[r1][c1] = (int)sqrt(variance);
+                sheet[r1][c1] = (int)round(sqrt(variance));
             } else {
                 sheet[r1][c1] = ERROR_VALUE;
             }

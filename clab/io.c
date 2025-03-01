@@ -300,6 +300,7 @@ void disable_output() {
 
 void enable_output() {
     output_enabled = true;
+    display_sheet();
 }
 
 // Add this helper function

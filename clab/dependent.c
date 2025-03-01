@@ -173,17 +173,16 @@ void mark_dfs(int r, int c, int **visited, bool *cycle) {
     if (r < 0 || r >= MAXROW || c < 0 || c >= MAXCOL)
         return;
 
-    if(!visited[r][c])visited[r][c] = true;
-    else{
+    if(!visited[r][c]) {
+        visited[r][c] = true;
+    } else {
         *cycle = true; 
         return;
-
     }
 
     Child *child = Child_lst[r][c];
     while (child != NULL) {
-        mark_dfs(child->r, child->c,visited,cycle);
-        visited[child->r][child->c] = false;
+        mark_dfs(child->r, child->c, visited, cycle);
         child = child->next;
     }
 }

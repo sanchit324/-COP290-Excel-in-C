@@ -13,6 +13,8 @@
 
 // Global sheet
 int** sheet;
+// Make status variable global and accessible from other files
+char status[20] = "ok";
 
 int main(int argc, char *argv[]) {
     // Check for correct number of arguments
@@ -71,7 +73,6 @@ int main(int argc, char *argv[]) {
     // Variables for input, execution time, and command processing
     char input[MAX_INPUT_LEN];
     double execution_time = 0.0;
-    char status[20] = "ok";
     ParsedCommand result;
     time_t start, end;  // Changed to time_t for wall clock time
 
@@ -82,6 +83,10 @@ int main(int argc, char *argv[]) {
         // Get user input
         input_reader(input);
         input_parser(input, &result);
+
+        // Reset status to "ok" at the beginning of each command cycle
+        // This ensures previous errors don't persist
+        strcpy(status, "ok");
 
         // Check for quit command
         if (strcmp(input, "q") == 0) {
@@ -157,7 +162,10 @@ int main(int argc, char *argv[]) {
             if (result.func != FUNC_SLEEP) {
                 topo_sort(result.op1.row-1, result.op1.col-1, &result);
             }
-            strcpy(status, "ok");
+            // Only set status to "ok" if it wasn't already set to "err" by cycle detection
+            if (strcmp(status, "err") != 0) {
+                strcpy(status, "ok");
+            }
         }
 
         end = time(NULL);  // End timing
