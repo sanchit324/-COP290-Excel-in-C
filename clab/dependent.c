@@ -307,22 +307,22 @@ void topo_sort(int root_r, int root_c, ParsedCommand *result) {
 
     topo_sort_dfs(root_r, root_c, visited, parentMap);
 
-    printf("\nTopological Order with Formulas:\n");
+    // printf("\nTopological Order with Formulas:\n");
 
     if (isEmpty()) {
-        printf("No dependencies found.\n");
+        // printf("No dependencies found.\n");
         return;
     }
 
     StackNode currNode = pop();
-    printf("(%d, %d) ", currNode.r, currNode.c);
+    // printf("(%d, %d) ", currNode.r, currNode.c);
 
     // First formula is the user-provided one
     if (result) {
-        printf("--[%s]--> ", result->expression);
+        // printf("--[%s]--> ", result->expression);
         process_command(result);
     } else {
-        printf("--[NO FORMULA]--> ");
+        // printf("--[NO FORMULA]--> ");
     }
 
     while (!isEmpty()) {
@@ -348,12 +348,12 @@ void topo_sort(int root_r, int root_c, ParsedCommand *result) {
         }
 
         if (found) {
-            printf("(%d, %d) --[%s]--> ", nextNode.r, nextNode.c, formula.expression);
+            // printf("(%d, %d) --[%s]--> ", nextNode.r, nextNode.c, formula.expression);
         } else {
-            printf("(%d, %d) --[NO FORMULA]--> ", nextNode.r, nextNode.c);
+            // printf("(%d, %d) --[NO FORMULA]--> ", nextNode.r, nextNode.c);
         }
     }
-    printf("\n");
+    // printf("\n");
 
     // Free memory
     for (int i = 0; i < MAXROW; i++) {

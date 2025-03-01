@@ -89,6 +89,9 @@ void assign(ParsedCommand *result) {
     int r2 = result->op2.row - 1;
     int c2 = result->op2.col - 1;
     int val = result->op2.value;
+    
+    // Store original value in case we need to revert
+    int original_value = sheet[r1][c1];
 
     // Remove old dependencies
     Parent *parent = Parent_lst[r1][c1];
@@ -114,8 +117,8 @@ void assign(ParsedCommand *result) {
             // Remove the dependencies if cycle is detected
             remove_child(r2, c2, r1, c1);
             remove_parent(r2, c2, r1, c1);
-            printf("Cycle detected! Assignment aborted.\n");
-            sheet[r1][c1] = ERROR_VALUE;
+            // Restore original value instead of setting ERROR_VALUE
+            sheet[r1][c1] = original_value;
             return;
         }
         
@@ -138,6 +141,9 @@ void arithmetic(ParsedCommand *result) {
     int c3 = result->op3.col - 1;
     int val2 = result->op2.value;
     int val3 = result->op3.value;
+    
+    // Store original value in case we need to revert
+    int original_value = sheet[r1][c1];
 
     // Remove old dependencies
     Parent *parent = Parent_lst[r1][c1];
@@ -170,8 +176,8 @@ void arithmetic(ParsedCommand *result) {
             remove_child(r3, c3, r1, c1);
             remove_parent(r3, c3, r1, c1);
         }
-        printf("Cycle detected! Operation aborted.\n");
-        sheet[r1][c1] = ERROR_VALUE;
+        // Restore original value instead of setting ERROR_VALUE
+        sheet[r1][c1] = original_value;
         return;
     }
 
@@ -288,6 +294,9 @@ void function(ParsedCommand *result) {
     int r3 = result->op3.row - 1;
     int c3 = result->op3.col - 1;
     
+    // Store original value in case we need to revert
+    int original_value = sheet[r1][c1];
+    
     // Remove old dependencies
     Parent *parent = Parent_lst[r1][c1];
     while (parent != NULL) {
@@ -311,8 +320,8 @@ void function(ParsedCommand *result) {
             if (detect_cycle(r1, c1)) {
                 remove_child(r2, c2, r1, c1);
                 remove_parent(r2, c2, r1, c1);
-                printf("Cycle detected! Operation aborted.\n");
-                sheet[r1][c1] = ERROR_VALUE;
+                // Restore original value instead of setting ERROR_VALUE
+                sheet[r1][c1] = original_value;
                 return;
             }
             
@@ -323,7 +332,6 @@ void function(ParsedCommand *result) {
 
         // Validate sleep duration
         if (sleep_duration < 0 || sleep_duration > 3600) {
-            printf("Error: Sleep duration must be between 0 and 3600 seconds.\n");
             sheet[r1][c1] = 0;
             return;
         }
@@ -346,8 +354,8 @@ void function(ParsedCommand *result) {
         
         // Validate range
         if (!is_valid_range(result)) {
-            printf("Error: Invalid range specified.\n");
-            sheet[r1][c1] = ERROR_VALUE;
+            // Restore original value instead of setting ERROR_VALUE
+            sheet[r1][c1] = original_value;
             return;
         }
         
@@ -368,8 +376,8 @@ void function(ParsedCommand *result) {
                     remove_parent(i, j, r1, c1);
                 }
             }
-            printf("Cycle detected! Operation aborted.\n");
-            sheet[r1][c1] = ERROR_VALUE;
+            // Restore original value instead of setting ERROR_VALUE
+            sheet[r1][c1] = original_value;
             return;
         }
     }
