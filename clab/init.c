@@ -172,7 +172,11 @@ int main(int argc, char *argv[]) {
         execution_time = difftime(end, start);  // Get difference in seconds
 
         // Process other commands and display sheet if output is enabled
-        process_command(&result);
+        // Skip processing if it's already been handled by handle_dependencies
+        if (!dpcorrect) {
+            process_command(&result);
+        }
+        
         if (output_enabled) {
             display_sheet();
         }
