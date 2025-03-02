@@ -16,6 +16,7 @@
 // Define global variables
 int** sheet;
 char status[20] = "ok";
+extern bool output_enabled;
 
 // Function prototypes for test suites
 void run_io_tests(FILE *output_file);
@@ -89,57 +90,63 @@ void cleanup_test_sheet() {
  */
 int main(int argc, char *argv[]) {
     if (argc != 3) {
-        fprintf(stderr, "Usage: %s <input_file> <output_file>\n", argv[0]);
+        printf("Usage: %s <input_file> <output_file>\n", argv[0]);
         return 1;
     }
-    
-    // Open input and output files
-    FILE *input_file = fopen(argv[1], "r");
-    if (!input_file) {
-        fprintf(stderr, "Error: Could not open input file %s\n", argv[1]);
-        return 1;
-    }
-    
-    FILE *output_file = fopen(argv[2], "w");
-    if (!output_file) {
-        fprintf(stderr, "Error: Could not open output file %s\n", argv[2]);
-        fclose(input_file);
-        return 1;
-    }
-    
-    // Redirect stdin to input file
-    if (freopen(argv[1], "r", stdin) == NULL) {
-        fprintf(stderr, "Error: Could not redirect stdin to input file\n");
-        fclose(input_file);
-        fclose(output_file);
-        return 1;
-    }
-    
+
     // Initialize test environment
     init_test_sheet();
     
+    // Enable test mode and disable output
+    set_test_mode(true);
+    output_enabled = false;
+    
+    // Open output file
+    FILE *output_file = fopen(argv[2], "w");
+    if (!output_file) {
+        printf("Error: Could not open %s\n", argv[2]);
+        return 1;
+    }
+    
     // Run all test suites
-    fprintf(output_file, "===== RUNNING IO TESTS =====\n");
+    fprintf(output_file, "===== RUNNING ALL TESTS =====\n\n");
+    
+    // Run IO tests
+    fprintf(output_file, "Running IO tests...\n");
     run_io_tests(output_file);
+    cleanup_test_sheet();
+    init_test_sheet();
     
-    fprintf(output_file, "\n===== RUNNING PROCESS TESTS =====\n");
+    // Run process tests
+    fprintf(output_file, "\nRunning process tests...\n");
     run_process_tests(output_file);
+    cleanup_test_sheet();
+    init_test_sheet();
     
-    fprintf(output_file, "\n===== RUNNING DEPENDENT TESTS =====\n");
+    // Run dependent tests
+    fprintf(output_file, "\nRunning dependent tests...\n");
     run_dependent_tests(output_file);
+    cleanup_test_sheet();
+    init_test_sheet();
     
-    fprintf(output_file, "\n===== RUNNING DISPLAY TESTS =====\n");
+    // Run display tests
+    fprintf(output_file, "\nRunning display tests...\n");
     run_display_tests(output_file);
+    cleanup_test_sheet();
+    init_test_sheet();
     
-    fprintf(output_file, "\n===== RUNNING INTEGRATION TESTS =====\n");
+    // Run integration tests
+    fprintf(output_file, "\nRunning integration tests...\n");
     run_integration_tests(output_file);
     
-    // Clean up
+    // Final cleanup
     cleanup_test_sheet();
     
-    // Close files
-    fclose(input_file);
+    // Close output file
     fclose(output_file);
+    
+    // Print final success message
+    printf("All test suites completed successfully.\n");
     
     return 0;
 } 

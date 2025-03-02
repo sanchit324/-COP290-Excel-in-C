@@ -86,6 +86,14 @@ extern bool was_disabled;  // Track if output was previously disabled
 extern int viewport_row;
 extern int viewport_col;
 
+// Output control
+void disable_output();
+void enable_output();
+void set_test_mode(bool mode);
+
+// Helper functions
+bool is_number(const char* str);
+
 #endif
 
 #ifndef __INP_FNC__
@@ -98,5 +106,4 @@ extern int viewport_col;
     bool validate_range(const char *range);          // Validate range reference format
     bool validate_function(const char *func);        // Validate function name
     void cell_to_rc(const char *cell, int *row, int *col);  // Convert cell reference to numbers
-    bool is_number(const char* str);                 // Check if string is valid number
 #endif

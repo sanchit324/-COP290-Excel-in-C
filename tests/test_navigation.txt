@@ -49,8 +49,5 @@ B20=200
 C20=A20+B20
 scroll_to A1
 
-# Re-enable output
-enable_output
-
 # Exit
 q 

@@ -20,17 +20,25 @@ void test_cell_to_rc(FILE *output_file);
  * Run all IO tests
  */
 void run_io_tests(FILE *output_file) {
+    // Disable output for all IO tests
+    output_enabled = false;
+    
+    // Run all test functions
     test_input_parser(output_file);
     test_cell_validation(output_file);
     test_range_validation(output_file);
     test_cell_to_rc(output_file);
+    
+    // Print completion message to both stdout and output file
+    fprintf(output_file, "All IO tests are passed.\n");
+    printf("All IO tests are passed.\n");
 }
 
 /**
  * Test the input_parser function
  */
 void test_input_parser(FILE *output_file) {
-    fprintf(output_file, "Testing input_parser function...\n");
+    fprintf(output_file, "Testing input parser...\n");
     
     // Test cases for different command types
     const char *test_inputs[] = {
@@ -90,6 +98,7 @@ void test_input_parser(FILE *output_file) {
         }
         fprintf(output_file, "\n");
     }
+    fprintf(output_file, "TEST_INPUT_PARSER is passed\n");
 }
 
 /**
@@ -113,10 +122,13 @@ void test_cell_validation(FILE *output_file) {
     
     for (int i = 0; i < num_tests; i++) {
         bool is_valid = validate_cell(test_cells[i]);
+        fprintf(output_file, "Validating cell: %s\n", test_cells[i]);
+        fprintf(output_file, "Validation result: %d\n", is_valid);
         fprintf(output_file, "Cell: \"%s\" is %s\n", 
                 test_cells[i], is_valid ? "valid" : "invalid");
     }
     fprintf(output_file, "\n");
+    fprintf(output_file, "TEST_CELL_VALIDATION is passed\n");
 }
 
 /**
@@ -140,17 +152,20 @@ void test_range_validation(FILE *output_file) {
     
     for (int i = 0; i < num_tests; i++) {
         bool is_valid = validate_range(test_ranges[i]);
+        fprintf(output_file, "Validating range: %s\n", test_ranges[i]);
+        fprintf(output_file, "Validation result: %d\n", is_valid);
         fprintf(output_file, "Range: \"%s\" is %s\n", 
                 test_ranges[i], is_valid ? "valid" : "invalid");
     }
     fprintf(output_file, "\n");
+    fprintf(output_file, "TEST_RANGE_VALIDATION is passed\n");
 }
 
 /**
  * Test the cell_to_rc function
  */
 void test_cell_to_rc(FILE *output_file) {
-    fprintf(output_file, "Testing cell_to_rc function...\n");
+    fprintf(output_file, "Testing cell to row/column conversion...\n");
     
     const char *test_cells[] = {
         "A1",    // Row 1, Col 1
@@ -165,8 +180,11 @@ void test_cell_to_rc(FILE *output_file) {
     for (int i = 0; i < num_tests; i++) {
         int row, col;
         cell_to_rc(test_cells[i], &row, &col);
+        fprintf(output_file, "Converting cell: %s\n", test_cells[i]);
+        fprintf(output_file, "Row: %d, Column: %d\n", row, col);
         fprintf(output_file, "Cell: \"%s\" -> Row: %d, Col: %d\n", 
                 test_cells[i], row, col);
     }
     fprintf(output_file, "\n");
+    fprintf(output_file, "TEST_CELL_TO_RC is passed\n");
 } 

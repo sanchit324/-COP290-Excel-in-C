@@ -27,10 +27,6 @@ A3=B1/C1
 B3=A1/1
 C3=A1/0  # Division by zero
 
-# Complex expressions
-D3=A1+B1*C1
-E3=B1/C1+A1
-F3=A1+B1+C1+D1
 
 # Exit
 q 

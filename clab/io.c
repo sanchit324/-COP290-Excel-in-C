@@ -13,6 +13,13 @@ bool was_disabled = false;  // Initialize to false
 int viewport_row = 1;
 int viewport_col = 1;
 
+// Keep track of whether we're in test mode
+bool test_mode = false;
+
+void set_test_mode(bool mode) {
+    test_mode = mode;
+}
+
 /**
  * Removes leading and trailing whitespace from a string
  * @param str Input string to trim
@@ -300,7 +307,10 @@ void disable_output() {
 
 void enable_output() {
     output_enabled = true;
-    display_sheet();
+    // Only display the sheet if we're not in test mode
+    if (!test_mode) {
+        display_sheet();
+    }
 }
 
 // Add this helper function

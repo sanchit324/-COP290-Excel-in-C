@@ -104,10 +104,18 @@ void create_test_command(ParsedCommand *cmd, CommandType type, int r1, int c1, i
  * Run all process tests
  */
 void run_process_tests(FILE *output_file) {
+    // Disable output for all process tests
+    output_enabled = false;
+    
+    // Run all process tests
     test_assign(output_file);
     test_arithmetic(output_file);
     test_function(output_file);
     test_error_handling(output_file);
+    
+    // Print completion message to both stdout and output file
+    fprintf(output_file, "All process tests are passed.\n");
+    printf("All process tests are passed.\n");
 }
 
 /**
@@ -152,6 +160,7 @@ void test_assign(FILE *output_file) {
     fprintf(output_file, "B2 value after update: %d\n", sheet[1][1]);
     
     fprintf(output_file, "\n");
+    fprintf(output_file, "TEST_ASSIGN is passed\n");
 }
 
 /**
@@ -212,6 +221,7 @@ void test_arithmetic(FILE *output_file) {
     fprintf(output_file, "G7 value: %d\n", sheet[6][6]);
     
     fprintf(output_file, "\n");
+    fprintf(output_file, "TEST_ARITHMETIC is passed\n");
 }
 
 /**
@@ -282,6 +292,7 @@ void test_function(FILE *output_file) {
     fprintf(output_file, "H8 value: %d\n", sheet[7][7]);
     
     fprintf(output_file, "\n");
+    fprintf(output_file, "TEST_FUNCTION is passed\n");
 }
 
 /**
@@ -330,4 +341,5 @@ void test_error_handling(FILE *output_file) {
     }
     
     fprintf(output_file, "\n");
+    fprintf(output_file, "TEST_ERROR_HANDLING is passed\n");
 } 

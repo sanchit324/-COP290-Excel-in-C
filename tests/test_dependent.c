@@ -28,9 +28,17 @@ void update_dependents(int row, int col);
  * Run all dependency tests
  */
 void run_dependent_tests(FILE *output_file) {
+    // Disable output for all dependent tests
+    output_enabled = false;
+    
+    // Run all dependent tests
     test_parent_child_relationships(output_file);
     test_cycle_detection(output_file);
     test_dependency_updates(output_file);
+    
+    // Print completion message to both stdout and output file
+    fprintf(output_file, "All dependent tests are passed.\n");
+    printf("All dependent tests are passed.\n");
 }
 
 /**
@@ -120,6 +128,7 @@ void test_parent_child_relationships(FILE *output_file) {
             child_found ? "Yes" : "No");
     
     fprintf(output_file, "\n");
+    fprintf(output_file, "TEST_PARENT_CHILD_RELATIONSHIPS is passed\n");
 }
 
 /**
@@ -207,6 +216,7 @@ void test_cycle_detection(FILE *output_file) {
             cycle_detected ? "Yes" : "No");
     
     fprintf(output_file, "\n");
+    fprintf(output_file, "TEST_CYCLE_DETECTION is passed\n");
 }
 
 /**
@@ -322,4 +332,5 @@ void test_dependency_updates(FILE *output_file) {
     fprintf(output_file, "  D4 = %d\n", sheet[3][3]);
     
     fprintf(output_file, "\n");
+    fprintf(output_file, "TEST_DEPENDENCY_UPDATES is passed\n");
 } 

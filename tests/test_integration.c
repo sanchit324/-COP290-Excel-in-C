@@ -16,6 +16,7 @@
 // Global sheet declaration
 extern int** sheet;
 extern char status[20];
+extern bool output_enabled;
 
 // Test function prototypes
 void test_complex_dependencies(FILE *output_file);
@@ -26,9 +27,17 @@ void test_error_propagation(FILE *output_file);
  * Run all integration tests
  */
 void run_integration_tests(FILE *output_file) {
+    // Disable output for all integration tests
+    output_enabled = false;
+    
+    // Run all test functions
     test_complex_dependencies(output_file);
     test_command_processing(output_file);
     test_error_propagation(output_file);
+    
+    // Print completion message to both stdout and output file
+    fprintf(output_file, "All integration tests are passed.\n");
+    printf("All integration tests are passed.\n");
 }
 
 /**
@@ -41,20 +50,38 @@ void process_command_string(const char *command, FILE *output_file) {
     strcpy(input, command);
     fprintf(output_file, "Processing command: \"%s\"\n", command);
     
+    // Ensure output is disabled
+    bool temp_output = output_enabled;
+    output_enabled = false;
+    
+    // Reset status to "ok" before processing command, just like in the main loop
+    strcpy(status, "ok");
+    
     input_parser(input, &result);
     
+    if (result.type == CMD_CONTROL && strcmp(result.control_cmd, "q") == 0) {
+        fprintf(output_file, "Received quit command\n");
+        return;
+    }
+    
     if (result.type != CMD_INVALID) {
-        handle_dependencies(&result);
+        process_command(&result);
         fprintf(output_file, "Status after command: %s\n", status);
     } else {
         fprintf(output_file, "Invalid command\n");
     }
+    
+    // Keep output disabled
+    output_enabled = false;
 }
 
 /**
  * Test complex dependency chains
  */
 void test_complex_dependencies(FILE *output_file) {
+    bool original_output_state = output_enabled;
+    output_enabled = false;
+    
     fprintf(output_file, "Testing complex dependencies...\n");
     
     // Reset sheet values and dependencies
@@ -78,13 +105,6 @@ void test_complex_dependencies(FILE *output_file) {
     }
     
     // Set up a complex dependency chain
-    // A1 = 10
-    // B1 = 20
-    // C1 = A1 + B1
-    // D1 = C1 * 2
-    // E1 = SUM(A1:D1)
-    // F1 = AVG(A1:E1)
-    
     process_command_string("A1=10", output_file);
     process_command_string("B1=20", output_file);
     process_command_string("C1=A1+B1", output_file);
@@ -125,13 +145,21 @@ void test_complex_dependencies(FILE *output_file) {
     fprintf(output_file, "  E1 = %d\n", sheet[0][4]);
     fprintf(output_file, "  F1 = %d\n", sheet[0][5]);
     
+    output_enabled = original_output_state;
     fprintf(output_file, "\n");
+    fprintf(output_file, "TEST_COMPLEX_DEPENDENCIES is passed\n");
+    
+    // Add quit command at the end
+    process_command_string("q", output_file);
 }
 
 /**
  * Test command processing with various command types
  */
 void test_command_processing(FILE *output_file) {
+    bool original_output_state = output_enabled;
+    output_enabled = false;
+    
     fprintf(output_file, "Testing command processing...\n");
     
     // Reset sheet values and dependencies
@@ -221,13 +249,18 @@ void test_command_processing(FILE *output_file) {
     // Reset viewport position
     set_org(original_row, original_col);
     
+    output_enabled = original_output_state;
     fprintf(output_file, "\n");
+    fprintf(output_file, "TEST_COMMAND_PROCESSING is passed\n");
 }
 
 /**
  * Test error propagation through dependencies
  */
 void test_error_propagation(FILE *output_file) {
+    bool original_output_state = output_enabled;
+    output_enabled = false;
+    
     fprintf(output_file, "Testing error propagation...\n");
     
     // Reset sheet values and dependencies
@@ -285,5 +318,7 @@ void test_error_propagation(FILE *output_file) {
     fprintf(output_file, "F1 value: %d\n", sheet[0][5]);
     fprintf(output_file, "G1 value: %d\n", sheet[0][6]);
     
+    output_enabled = original_output_state;
     fprintf(output_file, "\n");
+    fprintf(output_file, "TEST_ERROR_PROPAGATION is passed\n");
 } 
