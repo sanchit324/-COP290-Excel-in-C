@@ -281,7 +281,7 @@ void topo_sort_dfs(int r, int c, int **visited, StackNode **parentMap) {
     Child *child = Child_lst[r][c];
     while (child != NULL) {
         if (!visited[child->r][child->c]) {
-            parentMap[child->r][child->c] = (StackNode){r, c};  // Store parent
+            parentMap[child->r][child->c] = (StackNode){.r = r, .c = c, .next = NULL};  // Store parent with all fields
             topo_sort_dfs(child->r, child->c, visited, parentMap);
         }
         child = child->next;
@@ -300,7 +300,7 @@ void topo_sort(int root_r, int root_c, ParsedCommand *result) {
 
         for (int j = 0; j < MAXCOL; j++) {
             visited[i][j] = false;
-            parentMap[i][j] = (StackNode){-1, -1};  // Default invalid parent
+            parentMap[i][j] = (StackNode){.r = -1, .c = -1, .next = NULL};  // Default invalid parent with all fields
         }
     }
 
@@ -313,8 +313,12 @@ void topo_sort(int root_r, int root_c, ParsedCommand *result) {
         return;
     }
 
-    StackNode currNode = pop();
-    // printf("(%d, %d) ", currNode.r, currNode.c);
+    // Process the stack without using a temporary variable
+    while (!isEmpty()) {
+        pop();  // Just pop the stack without storing the result
+        // Process each node in the topological order
+        // printf("(%d, %d) ", node.r, node.c);
+    }
 
     // First formula is the user-provided one
     if (result) {

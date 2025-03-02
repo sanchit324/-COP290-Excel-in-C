@@ -49,6 +49,7 @@ void run_display_tests(FILE *output_file) {
  * Test scrolling functions
  */
 void test_scrolling(FILE *output_file) {
+    // Save and restore output state to ensure tests don't affect the application state
     bool original_output_state = output_enabled;
     output_enabled = false;
     
@@ -66,68 +67,80 @@ void test_scrolling(FILE *output_file) {
     // Test scroll left
     curr_org_c = 5;
     a();  // Scroll left
-    fprintf(output_file, "After scroll left from col 5: curr_org_c = %d\n", curr_org_c);
+    fprintf(output_file, "After scroll left from column 5: curr_org_c = %d\n", curr_org_c);
     
     // Test scroll right
     d();  // Scroll right
     fprintf(output_file, "After scroll right: curr_org_c = %d\n", curr_org_c);
     
-    // Test set origin
-    set_org(10, 10);  // Set viewport origin
-    fprintf(output_file, "After set_org(10,10): curr_org_r = %d, curr_org_c = %d\n", 
-            curr_org_r, curr_org_c);
-    
-    // Reset to initial position
+    // Test boundary conditions
     curr_org_r = 0;
-    curr_org_c = 0;
+    w();  // Try to scroll up from top
+    fprintf(output_file, "After scroll up from row 0: curr_org_r = %d\n", curr_org_r);
     
-    fprintf(output_file, "TEST_SCROLLING is passed\n\n");
+    curr_org_c = 0;
+    a();  // Try to scroll left from leftmost
+    fprintf(output_file, "After scroll left from column 0: curr_org_c = %d\n", curr_org_c);
+    
+    // Restore original output state
+    output_enabled = original_output_state;
+    
+    fprintf(output_file, "Scrolling tests completed.\n");
 }
 
 /**
  * Test output control functions
  */
 void test_output_control(FILE *output_file) {
+    // Save original output state to restore it after the test
     bool original_output_state = output_enabled;
-    output_enabled = false;
     
     fprintf(output_file, "Testing output control functions...\n");
     
+    // Test disable_output
+    output_enabled = true;
+    disable_output();
+    fprintf(output_file, "After disable_output: output_enabled = %d\n", output_enabled);
+    
     // Test enable_output
     enable_output();
-    fprintf(output_file, "After enable_output: output_enabled = %s\n", 
-            output_enabled ? "true" : "false");
+    fprintf(output_file, "After enable_output: output_enabled = %d\n", output_enabled);
     
-    // Test disable_output
-    disable_output();
-    fprintf(output_file, "After disable_output: output_enabled = %s\n", 
-            output_enabled ? "true" : "false");
+    // Restore original output state
+    output_enabled = original_output_state;
     
-    fprintf(output_file, "TEST_OUTPUT_CONTROL is passed\n\n");
+    fprintf(output_file, "Output control tests completed.\n");
 }
 
 /**
  * Test int_to_alpha function
  */
 void test_int_to_alpha(FILE *output_file) {
+    // Save original output state to restore it after the test
     bool original_output_state = output_enabled;
     output_enabled = false;
     
     fprintf(output_file, "Testing int_to_alpha function...\n");
     
-    // Test cases
-    char result[3];
-    int_to_alpha(0, result);
-    fprintf(output_file, "int_to_alpha(0) = %s\n", result);
+    // Test various column numbers
+    char col_str[10];
+    int_to_alpha(1, col_str);
+    fprintf(output_file, "Column 1 = %s\n", col_str);
     
-    int_to_alpha(25, result);
-    fprintf(output_file, "int_to_alpha(25) = %s\n", result);
+    int_to_alpha(26, col_str);
+    fprintf(output_file, "Column 26 = %s\n", col_str);
     
-    int_to_alpha(26, result);
-    fprintf(output_file, "int_to_alpha(26) = %s\n", result);
+    int_to_alpha(27, col_str);
+    fprintf(output_file, "Column 27 = %s\n", col_str);
     
-    int_to_alpha(51, result);
-    fprintf(output_file, "int_to_alpha(51) = %s\n", result);
+    int_to_alpha(52, col_str);
+    fprintf(output_file, "Column 52 = %s\n", col_str);
     
-    fprintf(output_file, "TEST_INT_TO_ALPHA is passed\n\n");
+    int_to_alpha(702, col_str);
+    fprintf(output_file, "Column 702 = %s\n", col_str);
+    
+    // Restore original output state
+    output_enabled = original_output_state;
+    
+    fprintf(output_file, "int_to_alpha tests completed.\n");
 } 

@@ -50,8 +50,7 @@ void process_command_string(const char *command, FILE *output_file) {
     strcpy(input, command);
     fprintf(output_file, "Processing command: \"%s\"\n", command);
     
-    // Ensure output is disabled
-    bool temp_output = output_enabled;
+    // Ensure output is disabled during test
     output_enabled = false;
     
     // Reset status to "ok" before processing command, just like in the main loop
@@ -267,21 +266,14 @@ void test_error_propagation(FILE *output_file) {
     for (int i = 0; i < MAXROW; i++) {
         for (int j = 0; j < MAXCOL; j++) {
             sheet[i][j] = 0;
-            
-            // Clear parent and child lists
-            while (Parent_lst[i][j] != NULL) {
-                Parent *temp = Parent_lst[i][j];
-                Parent_lst[i][j] = temp->next;
-                free(temp);
-            }
-            
-            while (Child_lst[i][j] != NULL) {
-                Child *temp = Child_lst[i][j];
-                Child_lst[i][j] = temp->next;
-                free(temp);
-            }
         }
     }
+    
+    // Properly clean up dependency lists
+    free_parent_list();
+    free_child_list();
+    make_parent_list();
+    make_child_list();
     
     // Set up a dependency chain
     process_command_string("A1=10", output_file);

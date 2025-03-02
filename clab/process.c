@@ -15,7 +15,7 @@
 #include "dependent.h"
 #include <time.h>
 
-#define ERROR_VALUE INT_MIN
+// ERROR_VALUE is already defined in init.h, no need to redefine it here
 
 // Add external declaration for status variable
 extern char status[20];
@@ -438,7 +438,12 @@ void function(ParsedCommand *result) {
                 sheet[r1][c1] = ERROR_VALUE;
             }
             break;
+        case FUNC_SLEEP:
+            // Sleep function is handled separately, nothing to do here
+            break;
         case FUNC_NONE:
+            // This should never happen in this context
+            sheet[r1][c1] = ERROR_VALUE;
             break;
     }
 }
