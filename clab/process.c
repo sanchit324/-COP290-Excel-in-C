@@ -65,14 +65,19 @@ void assign(ParsedCommand *result) {
             // Remove the dependencies if cycle is detected
             remove_child(r2, c2, r1, c1);
             remove_parent(r2, c2, r1, c1);
-            // Restore original value instead of setting ERROR_VALUE
-            sheet[r1][c1] = original_value;
+            // Set ERROR_VALUE for cycle detection
+            sheet[r1][c1] = ERROR_VALUE;
             // Set status to "err" for cycle detection
             strcpy(status, "err");
             return;
         }
         
-        sheet[r1][c1] = sheet[r2][c2];
+        // Check if referenced cell has an error
+        if (sheet[r2][c2] == ERROR_VALUE) {
+            sheet[r1][c1] = ERROR_VALUE;
+        } else {
+            sheet[r1][c1] = sheet[r2][c2];
+        }
     }
 }
 
@@ -126,8 +131,8 @@ void arithmetic(ParsedCommand *result) {
             remove_child(r3, c3, r1, c1);
             remove_parent(r3, c3, r1, c1);
         }
-        // Restore original value instead of setting ERROR_VALUE
-        sheet[r1][c1] = original_value;
+        // Set ERROR_VALUE for cycle detection
+        sheet[r1][c1] = ERROR_VALUE;
         // Set status to "err" for cycle detection
         strcpy(status, "err");
         return;
@@ -195,8 +200,7 @@ bool is_valid_range(ParsedCommand* cmd) {
 }
 
 /**
- * Main dependency handler for all cell operations
- * - Creates and maintains dependency relationships
+ * Handles dependencies for cell operations
  * - Detects and prevents circular dependencies
  * - Updates dependent cells when source cells change
  * - Handles both direct assignments and range operations
@@ -213,6 +217,9 @@ bool handle_dependencies(ParsedCommand *result) {
 
     int r1 = result->op1.row - 1;
     int c1 = result->op1.col - 1;
+    
+    // Store the original value before processing
+    int original_value = sheet[r1][c1];
 
     // Process the current cell
     if (result->type == CMD_SET_CELL) {
@@ -222,9 +229,12 @@ bool handle_dependencies(ParsedCommand *result) {
     } else if (result->type == CMD_FUNCTION) {
         function(result);
     }
-
-    // Update all dependent cells recursively
-    update_dependents(r1, c1);
+    
+    // Check if the value has changed
+    if (sheet[r1][c1] != original_value) {
+        // Update all dependent cells recursively
+        update_dependents(r1, c1);
+    }
     
     return true;
 }
@@ -272,14 +282,20 @@ void function(ParsedCommand *result) {
             if (detect_cycle(r1, c1)) {
                 remove_child(r2, c2, r1, c1);
                 remove_parent(r2, c2, r1, c1);
-                // Restore original value instead of setting ERROR_VALUE
-                sheet[r1][c1] = original_value;
+                // Set ERROR_VALUE for cycle detection
+                sheet[r1][c1] = ERROR_VALUE;
                 // Set status to "err" for cycle detection
                 strcpy(status, "err");
                 return;
             }
             
             sleep_duration = sheet[r2][c2];
+            
+            // Check if the referenced cell has an error
+            if (sleep_duration == ERROR_VALUE) {
+                sheet[r1][c1] = ERROR_VALUE;
+                return;
+            }
         } else {
             sleep_duration = result->op2.value;
         }
@@ -308,8 +324,8 @@ void function(ParsedCommand *result) {
         
         // Validate range
         if (!is_valid_range(result)) {
-            // Restore original value instead of setting ERROR_VALUE
-            sheet[r1][c1] = original_value;
+            // Set ERROR_VALUE for invalid range
+            sheet[r1][c1] = ERROR_VALUE;
             return;
         }
         
@@ -330,8 +346,8 @@ void function(ParsedCommand *result) {
                     remove_parent(i, j, r1, c1);
                 }
             }
-            // Restore original value instead of setting ERROR_VALUE
-            sheet[r1][c1] = original_value;
+            // Set ERROR_VALUE for cycle detection
+            sheet[r1][c1] = ERROR_VALUE;
             // Set status to "err" for cycle detection
             strcpy(status, "err");
             return;
@@ -343,7 +359,8 @@ void function(ParsedCommand *result) {
     int count = 0;
     int min = INT_MAX;
     int max = INT_MIN;
-        int std_dev = 0;
+    int std_dev = 0;
+    
     // Calculate range statistics
     for (int i = r2; i <= r3; i++) {
         for (int j = c2; j <= c3; j++) {
@@ -356,29 +373,36 @@ void function(ParsedCommand *result) {
             count++;
             if (value < min) min = value;
             if (value > max) max = value;
-            // sum_sq += (value * value);
         }
     }
 
-
-    if (count <= 1) std_dev =  0;  // Avoid division by zero
-    int mean;
-    double variance = 0.0;
-    mean = sum / count;
-
-
-    for (int i = r2; i <= r3; i++) {
-        for (int j = c2; j <= c3; j++) {
-            variance += (sheet[i][j] - mean) * (sheet[i][j] - mean);
-        }
+    // Handle empty range
+    if (count == 0) {
+        sheet[r1][c1] = ERROR_VALUE;
+        return;
     }
-    // Calculate variance
-    variance /= count;
 
-    // Return integer standard deviation (rounded)
-    std_dev =  (int)round(sqrt(variance));
+    // Calculate standard deviation if needed
+    if (count <= 1) {
+        std_dev = 0;  // Avoid division by zero
+    } else {
+        int mean = sum / count;
+        double variance = 0.0;
 
+        for (int i = r2; i <= r3; i++) {
+            for (int j = c2; j <= c3; j++) {
+                variance += (sheet[i][j] - mean) * (sheet[i][j] - mean);
+            }
+        }
+        
+        // Calculate variance
+        variance /= count;
 
+        // Return integer standard deviation (rounded)
+        std_dev = (int)round(sqrt(variance));
+    }
+
+    // Set the result based on the function type
     switch (result->func) {
         case FUNC_MIN:
             sheet[r1][c1] = min;
@@ -390,7 +414,7 @@ void function(ParsedCommand *result) {
             sheet[r1][c1] = sum;
             break;
         case FUNC_AVG:
-            sheet[r1][c1] = (count > 0) ? sum / count : ERROR_VALUE;
+            sheet[r1][c1] = sum / count;
             break;
         case FUNC_STDEV:
             sheet[r1][c1] = std_dev;
@@ -415,10 +439,16 @@ void function(ParsedCommand *result) {
  *   * Sleep commands
  */
 void process_command(ParsedCommand *result) {
+    // For cell operations, use handle_dependencies to ensure proper dependency updates
+    if (result->type == CMD_SET_CELL || 
+        result->type == CMD_ARITHMETIC || 
+        result->type == CMD_FUNCTION) {
+        handle_dependencies(result);
+        return;
+    }
+    
+    // Handle non-cell operations directly
     switch (result->type) {
-        case CMD_SET_CELL:
-            assign(result);
-            break;
         case CMD_SCROLL:
             set_org(result->op1.row, result->op1.col);
             break;
@@ -446,14 +476,11 @@ void process_command(ParsedCommand *result) {
         case CMD_SLEEP:
             sleep((unsigned int) result->sleep_duration);
             break;
-        case CMD_FUNCTION:
-            function(result);
-            break;
-        case CMD_ARITHMETIC:
-            arithmetic(result);
-            break;
         case CMD_INVALID:
             // Handle invalid command
+            break;
+        default:
+            // Handle any other command types
             break;
     }
 }
@@ -482,122 +509,26 @@ bool is_numeric_value(ParsedCommand* cmd) {
  * Recursively updates all cells that depend on the given cell
  */
 void update_dependents(int row, int col) {
-    Child *child = Child_lst[row][col];
+    // Create a temporary copy of the child list to avoid issues with list modification during traversal
+    Child *current = Child_lst[row][col];
     
-    while (child != NULL) {
-        int child_r = child->r;
-        int child_c = child->c;
-        ParsedCommand cmd = child->formula;
+    // Process each child that depends on this cell
+    while (current != NULL) {
+        int child_r = current->r;
+        int child_c = current->c;
+        ParsedCommand cmd = current->formula;
+        Child *next_child = current->next; // Save next pointer before processing
         
-        // Store the current value of the child cell
-        int original_value = sheet[child_r][child_c];
-        
-        // Process the child's formula, but skip SLEEP operations during dependency updates
+        // Process the child's formula based on its type
         if (cmd.type == CMD_ARITHMETIC) {
-            // Recalculate the arithmetic operation
-            int r2 = cmd.op2.row - 1;
-            int c2 = cmd.op2.col - 1;
-            int r3 = cmd.op3.row - 1;
-            int c3 = cmd.op3.col - 1;
-            int val2 = cmd.op2.value;
-            int val3 = cmd.op3.value;
-            
-            int operand1 = (r2 == -1 && c2 == -1) ? val2 : sheet[r2][c2];
-            int operand2 = (r3 == -1 && c3 == -1) ? val3 : sheet[r3][c3];
-            
-            // Only proceed if neither operand is ERROR_VALUE
-            if (operand1 != ERROR_VALUE && operand2 != ERROR_VALUE) {
-                switch (cmd.operator) {
-                    case '+':
-                        sheet[child_r][child_c] = operand1 + operand2;
-                        break;
-                    case '-':
-                        sheet[child_r][child_c] = operand1 - operand2;
-                        break;
-                    case '*':
-                        sheet[child_r][child_c] = operand1 * operand2;
-                        break;
-                    case '/':
-                        if (operand2 == 0) {
-                            sheet[child_r][child_c] = ERROR_VALUE;
-                        } else {
-                            sheet[child_r][child_c] = operand1 / operand2;
-                        }
-                        break;
-                }
-            } else {
-                sheet[child_r][child_c] = ERROR_VALUE;
-            }
+            // Recalculate arithmetic operation
+            arithmetic(&cmd);
         } else if (cmd.type == CMD_FUNCTION && cmd.func != FUNC_SLEEP) {
-            // Handle range functions (MIN, MAX, SUM, AVG, STDEV)
-            int r2 = cmd.op2.row - 1;
-            int c2 = cmd.op2.col - 1;
-            int r3 = cmd.op3.row - 1;
-            int c3 = cmd.op3.col - 1;
-            
-            // Initialize variables for range operations
-            int sum = 0;
-            int count = 0;
-            int min = INT_MAX;
-            int max = INT_MIN;
-            double sum_sq = 0;
-            bool has_error = false;
-            
-            // Calculate range statistics
-            for (int i = r2; i <= r3; i++) {
-                for (int j = c2; j <= c3; j++) {
-                    int value = sheet[i][j];
-                    if (value == ERROR_VALUE) {
-                        has_error = true;
-                        break;
-                    }
-                    sum += value;
-                    count++;
-                    if (value < min) min = value;
-                    if (value > max) max = value;
-                    sum_sq += (value * value);
-                }
-                if (has_error) break;
-            }
-            
-            if (has_error) {
-                sheet[child_r][child_c] = ERROR_VALUE;
-            } else {
-                switch (cmd.func) {
-                    case FUNC_MIN:
-                        sheet[child_r][child_c] = min;
-                        break;
-                    case FUNC_MAX:
-                        sheet[child_r][child_c] = max;
-                        break;
-                    case FUNC_SUM:
-                        sheet[child_r][child_c] = sum;
-                        break;
-                    case FUNC_AVG:
-                        sheet[child_r][child_c] = (count > 0) ? sum / count : ERROR_VALUE;
-                        break;
-                    case FUNC_STDEV:
-                        if (count > 1) {
-                            int mean = sum / count;
-                            double variance = (sum_sq - count * mean * mean) / (count);
-                            sheet[child_r][child_c] = (int)round(sqrt(variance));
-                        } else {
-                            sheet[child_r][child_c] = ERROR_VALUE;
-                        }
-                        break;
-                    default:
-                        // This should never happen
-                        sheet[child_r][child_c] = ERROR_VALUE;
-                        break;
-                }
-            }
+            // Recalculate function (except SLEEP)
+            function(&cmd);
         } else if (cmd.type == CMD_SET_CELL) {
-            // For direct cell references, just copy the value
-            int r2 = cmd.op2.row - 1;
-            int c2 = cmd.op2.col - 1;
-            if (r2 != -1 && c2 != -1) {
-                sheet[child_r][child_c] = sheet[r2][c2];
-            }
+            // Update cell reference
+            assign(&cmd);
         } else if (cmd.type == CMD_FUNCTION && cmd.func == FUNC_SLEEP) {
             // For SLEEP functions, just update the value without sleeping again
             int r1 = cmd.op1.row - 1;
@@ -619,12 +550,10 @@ void update_dependents(int row, int col) {
             }
         }
         
-        // Only recursively update if the value actually changed
-        if (sheet[child_r][child_c] != original_value) {
-            // Recursively update this child's dependents
-            update_dependents(child_r, child_c);
-        }
+        // Recursively update this child's dependents
+        update_dependents(child_r, child_c);
         
-        child = child->next;
+        // Move to the next child
+        current = next_child;
     }
 }
