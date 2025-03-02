@@ -10,24 +10,29 @@ SHELL := /bin/bash
 CLAB_DIR := clab
 TESTS_DIR := tests
 REPORT_DIR := report
+TARGET_DIR := target/release
 
 # Define commands
 MAKE := make
 RM := rm -f
+MKDIR := mkdir -p
+CP := cp
 
 # Default target - build the spreadsheet application
 all: build
 
-# Build the spreadsheet application
+# Build the spreadsheet application and copy to target/release
 build:
 	@echo "Building spreadsheet application..."
 	@$(MAKE) -C $(CLAB_DIR)
-	@echo "Build complete. Executable is at: $(CLAB_DIR)/sheet"
+	@$(MKDIR) $(TARGET_DIR)
+	@$(CP) $(CLAB_DIR)/sheet $(TARGET_DIR)/spreadsheet
+	@echo "Build complete. Executable is at: $(TARGET_DIR)/spreadsheet"
 
 # Run the application
 run: build
 	@echo "Running spreadsheet application..."
-	@cd $(CLAB_DIR) && ./sheet
+	@cd $(TARGET_DIR) && ./spreadsheet 10 10
 
 # Run all tests
 test:
@@ -40,15 +45,18 @@ test:
 	fi
 	@echo "Tests completed."
 
-# Generate the PDF report from LaTeX
+# Generate the PDF report from LaTeX and clean up auxiliary files
 report:
 	@echo "Generating PDF report from LaTeX..."
 	@if [ -d "$(REPORT_DIR)" ]; then \
 		$(MAKE) -C $(REPORT_DIR); \
+		echo "Cleaning up auxiliary LaTeX files..."; \
+		find $(REPORT_DIR) -type f -not -name "*.pdf" -not -name "*.tex" -not -name "Makefile" -not -name "*.bib" -not -name "*.cls" -not -name "*.sty" -delete; \
 	else \
 		echo "Error: Report directory not found!"; \
 		exit 1; \
 	fi
+	@echo "Report generation complete. PDF is at: $(REPORT_DIR)/report.pdf"
 
 # Check memory usage
 memory-check:
@@ -106,22 +114,27 @@ clean-tests:
 clean-report:
 	@echo "Cleaning report artifacts (keeping PDF)..."
 	@if [ -d "$(REPORT_DIR)" ]; then \
-		$(MAKE) -C $(REPORT_DIR) clean; \
+		find $(REPORT_DIR) -type f -not -name "*.pdf" -not -name "*.tex" -not -name "Makefile" -not -name "*.bib" -not -name "*.cls" -not -name "*.sty" -delete; \
 	fi
 
 # Clean all report artifacts including the PDF
 clean-report-all:
 	@echo "Cleaning all report artifacts (including PDF)..."
 	@if [ -d "$(REPORT_DIR)" ]; then \
-		$(MAKE) -C $(REPORT_DIR) clean-all; \
+		find $(REPORT_DIR) -type f -not -name "*.tex" -not -name "Makefile" -not -name "*.bib" -not -name "*.cls" -not -name "*.sty" -delete; \
 	fi
 
+# Clean target directory
+clean-target:
+	@echo "Cleaning target directory..."
+	@rm -rf $(TARGET_DIR)
+
 # Clean all build artifacts
-clean: clean-clab clean-tests clean-report
+clean: clean-clab clean-tests clean-report clean-target
 	@echo "All build artifacts cleaned."
 
 # Clean everything including PDFs
-clean-all: clean-clab clean-tests clean-report-all
+clean-all: clean-clab clean-tests clean-report-all clean-target
 	@echo "All artifacts cleaned."
 
 # Build everything (application, run tests, generate report)
@@ -147,11 +160,11 @@ help:
 	@echo "Spreadsheet Application Project Master Makefile"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  all (default)   - Build the spreadsheet application"
+	@echo "  all (default)   - Build the spreadsheet application in target/release"
 	@echo "  build           - Same as 'all'"
 	@echo "  run             - Build and run the spreadsheet application"
 	@echo "  test            - Run the test suite"
-	@echo "  report          - Generate the PDF report from LaTeX"
+	@echo "  report          - Generate the PDF report from LaTeX and clean auxiliary files"
 	@echo "  memory-check    - Check memory usage"
 	@echo "  memory-stress   - Run memory stress test"
 	@echo "  memory-leaks    - Check for memory leaks"
@@ -160,6 +173,7 @@ help:
 	@echo "  clean-tests     - Clean test artifacts"
 	@echo "  clean-report    - Clean report artifacts (keeping PDF)"
 	@echo "  clean-report-all - Clean all report artifacts (including PDF)"
+	@echo "  clean-target    - Clean target directory"
 	@echo "  clean           - Clean all build artifacts"
 	@echo "  clean-all       - Clean everything including PDFs"
 	@echo "  complete        - Build application, run tests, generate report"
@@ -168,4 +182,4 @@ help:
 
 # Declare phony targets
 .PHONY: all build run test report memory-check memory-stress memory-leaks memory-suite \
-        clean-clab clean-tests clean-report clean-report-all clean clean-all complete help help-all 
+        clean-clab clean-tests clean-report clean-report-all clean-target clean clean-all complete help help-all 
