@@ -10,6 +10,8 @@
 #include "dependent.h"
 #include <stdbool.h>
 
+ int MAXROW;
+ int MAXCOL;
 
 // Global sheet
 int** sheet;
@@ -28,14 +30,14 @@ int main(int argc, char *argv[]) {
     int input_cols = atoi(argv[2]);
 
     // Validate the parsed integers
-    if (input_rows <= 0 || input_rows > MAXROW || input_cols <= 0 || input_cols > MAXCOL) {
-        fprintf(stderr, "Invalid dimensions. Please enter values from 1 to %d for rows and 1 to %d for columns.\n", MAXROW, MAXCOL);
+    if (input_rows <= 0 || input_rows > 999 || input_cols <= 0 || input_cols > 18278) {
+        fprintf(stderr, "Invalid dimensions. Please enter values from 1 to %d for rows and 1 to %d for columns.\n", 999, 18278);
         return 1;
     }
 
     // Set the display size
-    displayr = input_rows;
-    displayc = input_cols;
+    MAXROW = input_rows;
+    MAXCOL = input_cols;
 
     // Allocate memory for row pointers
     sheet = (int **)malloc(MAXROW * sizeof(int *));

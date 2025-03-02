@@ -5,6 +5,7 @@
 #include <math.h>
 #include <time.h>
 #include "io.h"
+#include "init.h"
 #include "display.h"
 
 // Global flags for output control and viewport position

@@ -8,10 +8,10 @@
 #define __INIT__
 
 // Maximum number of rows in the spreadsheet (1-999)
-#define MAXROW 999
+extern int MAXROW;
 
 // Maximum number of columns in the spreadsheet (A-ZZZ, converts to 18278)
-#define MAXCOL 18278
+extern int MAXCOL;
 
 // Maximum width of each cell for display purposes
 #define MAXCOLWIDTH 5

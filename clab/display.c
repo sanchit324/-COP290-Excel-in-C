@@ -1,21 +1,20 @@
 #include <stdio.h>
-#include <limits.h>  // Add this for INT_MIN
+#include <limits.h>  // For INT_MIN
 #include "init.h"
 #include "display.h"
-#include "io.h"  // Add this to get access to output_enabled
+#include "io.h"  // For output_enabled
 
 int curr_org_r = 1;
 int curr_org_c = 1;
-int cellwidth = 8;  // Default cell width
-int displayr = 10;  // Default rows in display
-int displayc = 10;  // Default columns in display
+int displayr = 10;
+int displayc = 10;
+int cellwidth = 8;
 
-// Add variables to store pending scroll target
-int pending_scroll_row = -1;
-int pending_scroll_col = -1;
-bool has_pending_scroll = false;
+int pending_scroll_row = 0;
+int pending_scroll_col = 0;
+bool accumulating_scrolls = false;
 
-#define DEFAULT_SCROLL 10  // Default scroll amount in any direction
+#define DEFAULT_SCROLL 10
 
 void int_to_alpha(int x, char* alpha) {
     if (x > MAXCOL) return;
@@ -28,48 +27,41 @@ void int_to_alpha(int x, char* alpha) {
         x /= 26;
         i--;
     }
-    
     while (i >= 0) {
         alpha[i] = ' ';
         i--;
     }
 }
 
+void apply_pending_scroll() {
+    if (pending_scroll_row != 0 || pending_scroll_col != 0) {
+        set_org(curr_org_r + pending_scroll_row, curr_org_c + pending_scroll_col);
+        pending_scroll_row = 0;
+        pending_scroll_col = 0;
+    }
+}
+
 void display_sheet() {
-    // If output is disabled, return immediately
-    if (!output_enabled) {
-        return;
-    }
+    if (!output_enabled) return;
 
-    // Apply any pending scroll before displaying
-    if (has_pending_scroll) {
-        set_org(pending_scroll_row, pending_scroll_col);
-        has_pending_scroll = false;
-        pending_scroll_row = -1;
-        pending_scroll_col = -1;
-    }
+    apply_pending_scroll();  // Apply pending scrolls if any
 
-    int row_start = curr_org_r - 1;
-    int col_start = curr_org_c - 1;
-
-    if (row_start >= MAXROW || col_start >= MAXCOL || row_start < 0 || col_start < 0) {
-        printf("Error in Index\n");
-        return;
-    }
-
+    int max_display_r = (curr_org_r + displayr - 1 > MAXROW) ? (MAXROW - curr_org_r + 1) : displayr;
+    int max_display_c = (curr_org_c + displayc - 1 > MAXCOL) ? (MAXCOL - curr_org_c + 1) : displayc;
+    
     printf("%*s", cellwidth, "");
-    for (int i = 0; col_start + i < MAXCOL && i < displayc; i++) {
+    for (int i = 0; i < max_display_c; i++) {
         char temp[MAXCOLWIDTH + 1] = "   ";
-        int_to_alpha(col_start + i + 1, temp);
+        int_to_alpha(curr_org_c + i, temp);
         printf("%*s", cellwidth, temp);
     }
     printf("\n");
 
-    for (int j = 0; row_start + j < MAXROW && j < displayr; j++) {
-        printf("%-*d", cellwidth, row_start + j + 1);
-        for (int i = 0; col_start + i < MAXCOL && i < displayc; i++) {
-            int value = sheet[row_start + j][col_start + i];
-            if (value == INT_MIN || value == ERROR_VALUE) {  // Check for both INT_MIN and ERROR_VALUE
+    for (int j = 0; j < max_display_r; j++) {
+        printf("%-*d", cellwidth, curr_org_r + j);
+        for (int i = 0; i < max_display_c; i++) {
+            int value = sheet[curr_org_r + j - 1][curr_org_c + i - 1];
+            if (value == INT_MIN || value == ERROR_VALUE) {
                 printf("%*s", cellwidth, "ERR");
             } else {
                 printf("%*d", cellwidth, value);
@@ -79,97 +71,78 @@ void display_sheet() {
     }
 }
 
-/* Still need to add safety features to these i.e. give error when (curr_org_x,curr_org_c) is inappropriate */
-
 void set_org(int r, int c) {
     if (!output_enabled) {
-        // Save the scroll target for when output is re-enabled
-        pending_scroll_row = r;
-        pending_scroll_col = c;
-        has_pending_scroll = true;
+        pending_scroll_row = r - curr_org_r;
+        pending_scroll_col = c - curr_org_c;
+        accumulating_scrolls = true;
         return;
     }
-    
-    // Ensure the new origin stays within bounds
-    curr_org_r = (r < 1) ? 1 : 
-                 (r > MAXROW - displayr + 1) ? MAXROW - displayr + 1 : r;
-    
-    curr_org_c = (c < 1) ? 1 : 
-                 (c > MAXCOL - displayc + 1) ? MAXCOL - displayc + 1 : c;
+
+    curr_org_r = (r < 1) ? 1 : (r > MAXROW ? MAXROW : r);
+    curr_org_c = (c < 1) ? 1 : (c > MAXCOL ? MAXCOL : c);
 }
 
 void scroll(int dr, int dc) {
-    if (!output_enabled) {
-        // Save the scroll target for when output is re-enabled
-        pending_scroll_row = curr_org_r + dr;
-        pending_scroll_col = curr_org_c + dc;
-        has_pending_scroll = true;
-        return;
-    }
-    
-    int new_row = curr_org_r + dr;
-    int new_col = curr_org_c + dc;
-    
-    // Ensure we stay within bounds
-    curr_org_r = (new_row < 1) ? 1 : 
-                 (new_row > MAXROW - displayr + 1) ? MAXROW - displayr + 1 : new_row;
-    
-    curr_org_c = (new_col < 1) ? 1 : 
-                 (new_col > MAXCOL - displayc + 1) ? MAXCOL - displayc + 1 : new_col;
+    set_org(curr_org_r + dr, curr_org_c + dc);
 }
 
 void w() {
     if (!output_enabled) {
-        // Save the scroll target for when output is re-enabled
-        pending_scroll_row = curr_org_r - DEFAULT_SCROLL;
-        pending_scroll_col = curr_org_c;
-        has_pending_scroll = true;
+        pending_scroll_row -= DEFAULT_SCROLL;
+        accumulating_scrolls = true;
         return;
     }
-    
-    // Try to scroll up by DEFAULT_SCROLL, but don't go below 1
-    int new_row = curr_org_r - DEFAULT_SCROLL;
-    curr_org_r = (new_row < 1) ? 1 : new_row;
+    if (curr_org_r > 1) {
+        set_org(curr_org_r - DEFAULT_SCROLL, curr_org_c);
+    }
 }
 
 void a() {
     if (!output_enabled) {
-        // Save the scroll target for when output is re-enabled
-        pending_scroll_row = curr_org_r;
-        pending_scroll_col = curr_org_c - DEFAULT_SCROLL;
-        has_pending_scroll = true;
+        pending_scroll_col -= DEFAULT_SCROLL;
+        accumulating_scrolls = true;
         return;
     }
-    
-    // Try to scroll left by DEFAULT_SCROLL, but don't go below 1
-    int new_col = curr_org_c - DEFAULT_SCROLL;
-    curr_org_c = (new_col < 1) ? 1 : new_col;
+    if (curr_org_c > 1) {
+        set_org(curr_org_r, curr_org_c - DEFAULT_SCROLL);
+    }
 }
 
 void s() {
     if (!output_enabled) {
-        // Save the scroll target for when output is re-enabled
-        pending_scroll_row = curr_org_r + DEFAULT_SCROLL;
-        pending_scroll_col = curr_org_c;
-        has_pending_scroll = true;
+        pending_scroll_row += DEFAULT_SCROLL;
+        accumulating_scrolls = true;
         return;
     }
-    
-    // Try to scroll down by DEFAULT_SCROLL, but don't go beyond MAXROW
-    int new_row = curr_org_r + DEFAULT_SCROLL;
-    curr_org_r = (new_row > MAXROW - displayr + 1) ? MAXROW - displayr + 1 : new_row;
+    if (curr_org_r + displayr - 1 < MAXROW) {
+        int new_row = curr_org_r + DEFAULT_SCROLL;
+        if (new_row + displayr - 1 > MAXROW) {
+            new_row = MAXROW - displayr + 1;
+        }
+        set_org(new_row, curr_org_c);
+    }
 }
 
 void d() {
     if (!output_enabled) {
-        // Save the scroll target for when output is re-enabled
-        pending_scroll_row = curr_org_r;
-        pending_scroll_col = curr_org_c + DEFAULT_SCROLL;
-        has_pending_scroll = true;
+        pending_scroll_col += DEFAULT_SCROLL;
+        accumulating_scrolls = true;
         return;
     }
-    
-    // Try to scroll right by DEFAULT_SCROLL, but don't go beyond MAXCOL
-    int new_col = curr_org_c + DEFAULT_SCROLL;
-    curr_org_c = (new_col > MAXCOL - displayc + 1) ? MAXCOL - displayc + 1 : new_col;
+    if (curr_org_c + displayc - 1 < MAXCOL) {
+        int new_col = curr_org_c + DEFAULT_SCROLL;
+        if (new_col + displayc - 1 > MAXCOL) {
+            new_col = MAXCOL - displayc + 1;
+        }
+        set_org(curr_org_r, new_col);
+    }
+}
+
+// Call this function when output is re-enabled
+void enable_output_handler() {
+    if (accumulating_scrolls) {
+        apply_pending_scroll();
+        accumulating_scrolls = false;
+    }
 }
