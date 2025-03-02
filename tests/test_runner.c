@@ -18,6 +18,10 @@ int** sheet;
 char status[20] = "ok";
 extern bool output_enabled;
 
+// Define MAXROW and MAXCOL for testing
+int MAXROW = 100;  // Default test size
+int MAXCOL = 100;  // Default test size
+
 // Function prototypes for test suites
 void run_io_tests(FILE *output_file);
 void run_process_tests(FILE *output_file);
