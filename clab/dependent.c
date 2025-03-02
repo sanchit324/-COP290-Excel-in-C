@@ -3,8 +3,8 @@
 #include "process.h"
 #include "dependent.h"
 #include <stdlib.h>
-#include"stack.h"
-#include<stdio.h>
+#include "stack.h"
+#include <stdio.h>
 
 
 Parent ***Parent_lst;
