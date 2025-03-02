@@ -24,61 +24,6 @@ extern char status[20];
 // and before any function definitions
 void update_dependents(int row, int col);
 
-// void assign(ParsedCommand *result) {
-//     int r1 = result->op1.row - 1;
-//     int c1 = result->op1.col - 1;
-
-//     int r2 = result->op2.row - 1;
-//     int c2 = result->op2.col - 1;
-//     int val = result->op2.value;
-
-//     if (r2 == -1 && c2 == -1) {
-//         // Remove r1, c1 from child lists of its parents
-//         Parent *parent = Parent_lst[r1][c1];
-//         while (parent != NULL) {
-//             remove_child(parent->r, parent->c, r1, c1);
-//             parent = parent->next;
-//         }
-
-//         // Remove all parents of r1, c1 using remove_parent
-//         while (Parent_lst[r1][c1] != NULL) {
-//             remove_parent(Parent_lst[r1][c1]->r, Parent_lst[r1][c1]->c, r1, c1);
-//         }
-
-//         sheet[r1][c1] = val;
-//     } else {
-//         // Assign parent-child relationship
-//         assign_parent(r2, c2, r1, c1, *result);
-//         assign_child(r2, c2, r1, c1, *result);
-
-//         // Detect cycle
-//         bool cycle = detect_cycle(r1, c1);
-//         if (cycle) {
-//             // Rollback changes if cycle is detected
-//             remove_child(r2, c2, r1, c1);
-//             remove_parent(r2, c2, r1, c1);
-//             printf("Cycle detected! Assignment aborted.\n");
-//         } else {
-//             // Remove previous dependencies of r1, c1
-//             Parent *parent = Parent_lst[r1][c1];
-//             while (parent != NULL) {
-//                 remove_child(parent->r, parent->c, r1, c1);
-//                 parent = parent->next;
-//             }
-
-//             while (Parent_lst[r1][c1] != NULL) {
-//                 remove_parent(Parent_lst[r1][c1]->r, Parent_lst[r1][c1]->c, r1, c1);
-//             }
-
-//             // Reassign parent-child relationship after removing old dependencies
-//             assign_parent(r2, c2, r1, c1, *result);
-//             assign_child(r2, c2, r1, c1, *result);
-
-//             // Update cell value
-//             sheet[r1][c1] = sheet[r2][c2];
-//         }
-//     }
-// }
 
 /**
  * Assigns a value to a cell and handles dependencies
