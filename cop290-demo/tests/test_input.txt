@@ -1,0 +1,51 @@
+# Basic cell assignments
+A1=10
+B1=20
+C1=30
+
+# Arithmetic operations
+D1=A1+B1
+E1=B1-A1
+F1=C1*2
+G1=C1/3
+
+# Range functions
+A2=SUM(A1:C1)
+B2=AVG(A1:C1)
+C2=MIN(A1:G1)
+D2=MAX(A1:G1)
+E2=STDEV(A1:C1)
+
+# Cell references
+F2=A1
+G2=D1
+
+# Complex dependencies
+A3=B2+C2
+B3=A3*2
+C3=SUM(A1:B3)
+
+# Error cases
+D3=A1/0
+E3=D3+10
+
+# Sleep function
+F3=SLEEP(1)
+
+# Control commands
+disable_output
+A4=100
+B4=200
+C4=A4+B4
+
+
+# Scroll commands
+scroll_to A1
+w
+s
+a
+d
+scroll_to C3
+
+# Exit command
+q 
