@@ -50,8 +50,8 @@ report:
 	@echo "Generating PDF report from LaTeX..."
 	@if [ -d "$(REPORT_DIR)" ]; then \
 		$(MAKE) -C $(REPORT_DIR); \
-		echo "Cleaning up auxiliary LaTeX files..."; \
-		find $(REPORT_DIR) -type f -not -name "*.pdf" -not -name "*.tex" -not -name "Makefile" -not -name "*.bib" -not -name "*.cls" -not -name "*.sty" -delete; \
+		echo "Cleaning up auxiliary LaTeX files (preserving assets folder)..."; \
+		find $(REPORT_DIR) -type f -not -name "*.pdf" -not -name "*.tex" -not -name "Makefile" -not -name "*.bib" -not -name "*.cls" -not -name "*.sty" -not -path "$(REPORT_DIR)/assets/*" -delete; \
 	else \
 		echo "Error: Report directory not found!"; \
 		exit 1; \
@@ -112,16 +112,16 @@ clean-tests:
 
 # Clean report artifacts but keep the PDF
 clean-report:
-	@echo "Cleaning report artifacts (keeping PDF)..."
+	@echo "Cleaning report artifacts (keeping PDF and assets folder)..."
 	@if [ -d "$(REPORT_DIR)" ]; then \
-		find $(REPORT_DIR) -type f -not -name "*.pdf" -not -name "*.tex" -not -name "Makefile" -not -name "*.bib" -not -name "*.cls" -not -name "*.sty" -delete; \
+		find $(REPORT_DIR) -type f -not -name "*.pdf" -not -name "*.tex" -not -name "Makefile" -not -name "*.bib" -not -name "*.cls" -not -name "*.sty" -not -path "$(REPORT_DIR)/assets/*" -delete; \
 	fi
 
 # Clean all report artifacts including the PDF
 clean-report-all:
-	@echo "Cleaning all report artifacts (including PDF)..."
+	@echo "Cleaning all report artifacts (including PDF, preserving assets folder)..."
 	@if [ -d "$(REPORT_DIR)" ]; then \
-		find $(REPORT_DIR) -type f -not -name "*.tex" -not -name "Makefile" -not -name "*.bib" -not -name "*.cls" -not -name "*.sty" -delete; \
+		find $(REPORT_DIR) -type f -not -name "*.tex" -not -name "Makefile" -not -name "*.bib" -not -name "*.cls" -not -name "*.sty" -not -path "$(REPORT_DIR)/assets/*" -delete; \
 	fi
 
 # Clean target directory
@@ -164,15 +164,15 @@ help:
 	@echo "  build           - Same as 'all'"
 	@echo "  run             - Build and run the spreadsheet application"
 	@echo "  test            - Run the test suite"
-	@echo "  report          - Generate the PDF report from LaTeX and clean auxiliary files"
+	@echo "  report          - Generate the PDF report from LaTeX and clean auxiliary files (preserves assets folder)"
 	@echo "  memory-check    - Check memory usage"
 	@echo "  memory-stress   - Run memory stress test"
 	@echo "  memory-leaks    - Check for memory leaks"
 	@echo "  memory-suite    - Run comprehensive memory test suite"
 	@echo "  clean-clab      - Clean clab build artifacts"
 	@echo "  clean-tests     - Clean test artifacts"
-	@echo "  clean-report    - Clean report artifacts (keeping PDF)"
-	@echo "  clean-report-all - Clean all report artifacts (including PDF)"
+	@echo "  clean-report    - Clean report artifacts (keeping PDF and assets folder)"
+	@echo "  clean-report-all - Clean all report artifacts (including PDF, preserving assets folder)"
 	@echo "  clean-target    - Clean target directory"
 	@echo "  clean           - Clean all build artifacts"
 	@echo "  clean-all       - Clean everything including PDFs"

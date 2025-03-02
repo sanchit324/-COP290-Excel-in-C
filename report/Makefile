@@ -9,6 +9,7 @@ LATEX = pdflatex
 # Report source and output
 REPORT_SRC = report.tex
 REPORT_PDF = report.pdf
+ASSETS_DIR = assets
 
 # Default target
 all: $(REPORT_PDF)
@@ -29,15 +30,17 @@ $(REPORT_PDF): $(REPORT_SRC)
 		exit 1; \
 	fi
 
-# Clean auxiliary files but keep PDF
+# Clean auxiliary files but keep PDF and assets
 clean:
-	@echo "Cleaning auxiliary LaTeX files..."
+	@echo "Cleaning auxiliary LaTeX files (preserving assets folder)..."
 	@rm -f *.aux *.log *.out *.toc *.lof *.lot *.bbl *.blg *.dvi *.fls *.fdb_latexmk *.synctex.gz
+	@echo "Assets folder preserved."
 
-# Clean all files including PDF
+# Clean all files including PDF but preserve assets
 clean-all: clean
-	@echo "Cleaning all LaTeX files including PDF..."
+	@echo "Cleaning all LaTeX files including PDF (preserving assets folder)..."
 	@rm -f $(REPORT_PDF)
+	@echo "Assets folder preserved."
 
 # Help target
 help:
@@ -45,8 +48,8 @@ help:
 	@echo ""
 	@echo "Available targets:"
 	@echo "  all (default)   - Generate the PDF report"
-	@echo "  clean           - Remove auxiliary LaTeX files"
-	@echo "  clean-all       - Remove all LaTeX files including PDF"
+	@echo "  clean           - Remove auxiliary LaTeX files (preserves assets folder)"
+	@echo "  clean-all       - Remove all LaTeX files including PDF (preserves assets folder)"
 	@echo "  help            - Display this help message"
 
 .PHONY: all clean clean-all help 
