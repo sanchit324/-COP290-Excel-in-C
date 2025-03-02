@@ -343,8 +343,7 @@ void function(ParsedCommand *result) {
     int count = 0;
     int min = INT_MAX;
     int max = INT_MIN;
-    double sum_sq = 0;
-
+        int std_dev = 0;
     // Calculate range statistics
     for (int i = r2; i <= r3; i++) {
         for (int j = c2; j <= c3; j++) {
@@ -357,9 +356,28 @@ void function(ParsedCommand *result) {
             count++;
             if (value < min) min = value;
             if (value > max) max = value;
-            sum_sq += (value * value);
+            // sum_sq += (value * value);
         }
     }
+
+
+    if (count <= 1) std_dev =  0;  // Avoid division by zero
+    int mean;
+    double variance = 0.0;
+    mean = sum / count;
+
+
+    for (int i = r2; i <= r3; i++) {
+        for (int j = c2; j <= c3; j++) {
+            variance += (sheet[i][j] - mean) * (sheet[i][j] - mean);
+        }
+    }
+    // Calculate variance
+    variance /= count;
+
+    // Return integer standard deviation (rounded)
+    std_dev =  (int)round(sqrt(variance));
+
 
     switch (result->func) {
         case FUNC_MIN:
@@ -375,13 +393,7 @@ void function(ParsedCommand *result) {
             sheet[r1][c1] = (count > 0) ? sum / count : ERROR_VALUE;
             break;
         case FUNC_STDEV:
-            if (count > 1) {
-                double mean = (double)sum / count;
-                double variance = (sum_sq - count * mean * mean) / (count - 1);
-                sheet[r1][c1] = (int)round(sqrt(variance));
-            } else {
-                sheet[r1][c1] = ERROR_VALUE;
-            }
+            sheet[r1][c1] = std_dev;
             break;
         case FUNC_SLEEP:
             // Sleep function is handled separately, nothing to do here
