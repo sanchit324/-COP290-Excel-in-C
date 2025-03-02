@@ -72,7 +72,12 @@ void assign(ParsedCommand *result) {
             return;
         }
         
-        sheet[r1][c1] = sheet[r2][c2];
+        // Check if the referenced cell has an error value
+        if (sheet[r2][c2] == ERROR_VALUE) {
+            sheet[r1][c1] = ERROR_VALUE;
+        } else {
+            sheet[r1][c1] = sheet[r2][c2];
+        }
     }
 }
 
@@ -213,6 +218,9 @@ bool handle_dependencies(ParsedCommand *result) {
 
     int r1 = result->op1.row - 1;
     int c1 = result->op1.col - 1;
+    
+    // Store the original value to check if it changed
+    int original_value = sheet[r1][c1];
 
     // Process the current cell
     if (result->type == CMD_SET_CELL) {
@@ -223,8 +231,11 @@ bool handle_dependencies(ParsedCommand *result) {
         function(result);
     }
 
-    // Update all dependent cells recursively
-    update_dependents(r1, c1);
+    // Only update dependents if the value actually changed
+    if (sheet[r1][c1] != original_value) {
+        // Update all dependent cells recursively
+        update_dependents(r1, c1);
+    }
     
     return true;
 }
@@ -343,7 +354,8 @@ void function(ParsedCommand *result) {
     int count = 0;
     int min = INT_MAX;
     int max = INT_MIN;
-        int std_dev = 0;
+    int std_dev = 0;
+
     // Calculate range statistics
     for (int i = r2; i <= r3; i++) {
         for (int j = c2; j <= c3; j++) {
@@ -356,12 +368,11 @@ void function(ParsedCommand *result) {
             count++;
             if (value < min) min = value;
             if (value > max) max = value;
-            // sum_sq += (value * value);
+
         }
     }
 
-
-    if (count <= 1) std_dev =  0;  // Avoid division by zero
+     if (count <= 1) std_dev =  0;  // Avoid division by zero
     int mean;
     double variance = 0.0;
     mean = sum / count;
@@ -379,6 +390,7 @@ void function(ParsedCommand *result) {
     std_dev =  (int)round(sqrt(variance));
 
 
+
     switch (result->func) {
         case FUNC_MIN:
             sheet[r1][c1] = min;
@@ -393,7 +405,7 @@ void function(ParsedCommand *result) {
             sheet[r1][c1] = (count > 0) ? sum / count : ERROR_VALUE;
             break;
         case FUNC_STDEV:
-            sheet[r1][c1] = std_dev;
+             sheet[r1][c1] = std_dev;
             break;
         case FUNC_SLEEP:
             // Sleep function is handled separately, nothing to do here
@@ -489,6 +501,9 @@ void update_dependents(int row, int col) {
         int child_c = child->c;
         ParsedCommand cmd = child->formula;
         
+        // Store the previous value to check if it changed
+        int previous_value = sheet[child_r][child_c];
+        
         // Process the child's formula, but skip SLEEP operations during dependency updates
         if (cmd.type == CMD_ARITHMETIC) {
             arithmetic(&cmd);
@@ -517,8 +532,11 @@ void update_dependents(int row, int col) {
             }
         }
         
-        // Recursively update this child's dependents
-        update_dependents(child_r, child_c);
+        // Only recursively update if the value actually changed
+        if (sheet[child_r][child_c] != previous_value) {
+            // Recursively update this child's dependents
+            update_dependents(child_r, child_c);
+        }
         
         child = child->next;
     }
