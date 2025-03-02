@@ -1,0 +1,3 @@
+===== START OF ALL TESTS =====
+
+===== Running tests with test_input.txt =====
